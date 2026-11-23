@@ -1,14 +1,19 @@
 'use strict';
 
 const Homey = require('homey');
+const { ALARM_KINDS } = require('../../lib/alarm-alerts');
 
 class HomeLinkDriver extends Homey.Driver {
   #maintenanceReported;
   #maintenanceCleared;
+  #alarmReported = new Map();
 
   onInit() {
     this.#maintenanceReported = this.homey.flow.getDeviceTriggerCard('homelink_maintenance_reported');
     this.#maintenanceCleared = this.homey.flow.getDeviceTriggerCard('homelink_maintenance_cleared');
+    for (const kind of ALARM_KINDS) {
+      this.#alarmReported.set(kind, this.homey.flow.getDeviceTriggerCard('homelink_' + kind + '_reported'));
+    }
     this.homey.flow.getConditionCard('homelink_maintenance_active')
       .registerRunListener(async ({ device }) => device.hasActiveMaintenance());
     this.homey.flow.getConditionCard('homelink_maintenance_data_available')
@@ -25,6 +30,13 @@ class HomeLinkDriver extends Homey.Driver {
     }
     return this.#maintenanceCleared.trigger(device, {
       previous_count: change.previousCount,
+      observed_at: change.observedAt,
+    });
+  }
+
+  triggerAlarmReport(device, kind, change) {
+    return this.#alarmReported.get(kind).trigger(device, {
+      new_count: change.newCount,
       observed_at: change.observedAt,
     });
   }

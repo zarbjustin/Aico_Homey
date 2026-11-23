@@ -176,3 +176,18 @@ test('renews only once when inventory and property requests both reject the same
   assert.equal(authCount, 2);
   assert.equal(calls.length, 6);
 });
+
+test('quarantines inconsistent alarm data without erasing validated maintenance state', async () => {
+  const reference = 'SYNTHETIC-HOME';
+  const base = {
+    type: 'DEVICE', status: 'ACTIVE', serialNumber: 'SYNTHETIC-ALARM', propertyReference: reference,
+    _rel: { device: 'device/SYNTHETIC-ALARM', property: 'property/' + reference },
+  };
+  const { client } = clientFor([{ body: token }, { body: { count: 2, results: [
+    { ...base, id: 'maintenance', category: 'MAINTENANCE', eventType: 'MAINS_ABSENT' },
+    { ...base, id: 'invalid-alarm', category: 'ALARM', eventType: 'CO_ALARM', eventTypeId: 'FIRE_ALARM' },
+  ] } }]);
+  const snapshot = await client.getPropertyMaintenance(reference);
+  assert.equal(snapshot.activeByDevice.size, 1);
+  assert.equal(snapshot.alarmsByDevice, null);
+});

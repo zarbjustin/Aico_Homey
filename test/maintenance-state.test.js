@@ -2,13 +2,13 @@
 
 const assert = require('node:assert/strict');
 const { test } = require('node:test');
-const { MaintenanceState } = require('../lib/maintenance-state');
+const { AlertState } = require('../lib/alert-state');
 
 const house = 'SYNTHETIC-HOME';
 const minute = 60_000;
 
 test('seeds existing alerts and publishes new IDs even if the count stays the same', () => {
-  const state = new MaintenanceState();
+  const state = new AlertState();
   assert.equal(state.count(0), undefined);
   assert.equal(state.observe(house, 0, ['existing'], 0), undefined);
   assert.equal(state.count(0), 1);
@@ -20,7 +20,7 @@ test('seeds existing alerts and publishes new IDs even if the count stays the sa
 });
 
 test('publishes clearing only on the transition to zero reports', () => {
-  const state = new MaintenanceState();
+  const state = new AlertState();
   state.observe(house, 0, ['first', 'second'], 0);
   assert.equal(state.observe(house, 5 * minute, ['second'], 5 * minute), undefined);
   assert.deepEqual(state.observe(house, 10 * minute, [], 10 * minute), {
@@ -31,7 +31,7 @@ test('publishes clearing only on the transition to zero reports', () => {
 });
 
 test('seeds the first recovery, stale interval, or property change in isolation', () => {
-  const state = new MaintenanceState();
+  const state = new AlertState();
   state.observe(house, 0, ['old'], 0);
   state.reset();
   assert.equal(state.count(minute), undefined);
@@ -46,7 +46,7 @@ test('seeds the first recovery, stale interval, or property change in isolation'
 });
 
 test('ignores out-of-order and rejects future observations', () => {
-  const state = new MaintenanceState();
+  const state = new AlertState();
   state.observe(house, 5 * minute, ['active'], 5 * minute);
   assert.equal(state.observe(house, 4 * minute, [], 5 * minute), undefined);
   assert.equal(state.count(5 * minute), 1);

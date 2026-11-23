@@ -26,6 +26,14 @@
     <button class="homey-button-secondary-full" type="button" id="remove">Remove saved credentials</button>
     <p id="status" role="status"></p>
   </form>
+  <form id="alarm-preview-form">
+    <fieldset class="homey-form-fieldset" aria-describedby="alarm-preview-hint">
+      <legend class="homey-form-legend">Alarm Flow preview</legend>
+      <p id="alarm-preview-hint">For a supervised test after checking the HomeLINK alert feed. Fire and carbon monoxide Flows use cloud reports that can arrive in batches or be delayed. Use them for supplementary notifications only.</p>
+      <label><input type="checkbox" id="alarm-preview" disabled> Enable fire and carbon monoxide preview Flows</label>
+    </fieldset>
+    <p id="alarm-preview-status" role="status"></p>
+  </form>
   <script>
     function onHomeyReady(Homey) {
       const key = 'homelink_web_api';
@@ -64,6 +72,29 @@
           setBusy(false);
           status.textContent = error ? 'Homey could not remove the credentials.' : 'Saved credentials removed.';
           if (!error) form.reset();
+        });
+      });
+
+      const previewKey = 'homelink_alarm_flow_preview';
+      const preview = document.getElementById('alarm-preview');
+      const previewStatus = document.getElementById('alarm-preview-status');
+      Homey.get(previewKey, (error, value) => {
+        if (error) {
+          previewStatus.textContent = 'Homey could not load the preview setting.';
+          return;
+        }
+        preview.checked = value === true;
+        preview.disabled = false;
+      });
+
+      preview.addEventListener('change', () => {
+        const enabled = preview.checked;
+        preview.disabled = true;
+        Homey.set(previewKey, enabled, (error) => {
+          preview.disabled = false;
+          if (error) preview.checked = !enabled;
+          previewStatus.textContent = error ? 'Homey could not save the preview setting.'
+            : enabled ? 'Preview enabled. Waiting for a new HomeLINK baseline.' : 'Preview disabled.';
         });
       });
 
