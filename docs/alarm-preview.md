@@ -10,7 +10,7 @@ Run `npm test`. Synthetic REST responses exercise the same parsing, snapshot com
 
 - The Homey driver declares separate [device trigger cards](https://apps.developer.homey.app/the-basics/flow#flow-device-trigger-cards) in Homey Compose and calls them for the paired device. This preview adds notification triggers only.
 - The [reference HomeLINK event catalogue](https://github.com/RogerSelwyn/python_homelink/blob/c6db59b8dca7f07d67baba08433e198da1456585/tests/data/lookups_eventtype.json) lists `FIRE_ALARM` and `CO_ALARM` as separate alarm codes. The preview checks the REST feed and verifies the property, device and status. Conflicting or unrecognised device alarm codes suppress the preview for that property until a valid baseline returns.
-- The preview routes fire reports for Ei3014, Ei3016, Ei3028 and Ei3030, and CO reports for Ei3028 and Ei3030. Confirm live routing and coverage by model. Property-level reports require separate attribution evidence.
+- The preview routes fire reports for Ei3014, Ei3016, Ei3028 and Ei3030, and CO reports for Ei3018, Ei3028 and Ei3030. Ei3018 pairing requires the HomeLINK type `COALARM`. Confirm live routing and coverage by model. Property-level reports require separate attribution evidence.
 - The first valid snapshot after enablement, credentials change, a stale gap or an ambiguous feed seeds the baseline. Subsequent fresh snapshots trigger on newly observed active alert identifiers. The property alert read is shared with maintenance and is cached for five minutes.
 - The [reference MQTT documentation](https://rogerselwyn.github.io/AICO_HomeLINK/mqtt.html) shows a payload with a CO code and fire wording. The preview reads REST. MQTT classification and delivery remain a separate verification step.
 

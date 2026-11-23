@@ -59,8 +59,8 @@
       let statusRequest = 0;
 
       function inventoryText(summary) {
-        const models = summary.models.map(({ model, count, pairable }) => model + ' × ' + count +
-          (pairable ? '' : ' (awaiting verification)'));
+        const models = summary.models.map(({ model, count, pairable, pairableCount }) => model + ' × ' + count +
+          (pairable ? (pairableCount < count ? ' (' + pairableCount + ' eligible)' : '') : ' (awaiting verification)'));
         const lines = [
           summary.records + ' inventory records · ' + summary.pairable + ' eligible for pairing · ' + summary.linkedProperties + ' linked properties',
         ];

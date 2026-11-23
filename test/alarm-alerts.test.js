@@ -53,6 +53,7 @@ test('checks product capability before routing cloud alarm reports', () => {
   assert.deepEqual(profileFor('Ei3030').alarms, ['fire', 'co']);
   assert.deepEqual(profileFor('Ei3028').alarms, ['fire', 'co']);
   assert.deepEqual(profileFor('Ei3016').alarms, ['fire']);
+  assert.deepEqual(profileFor('Ei3018').alarms, ['co']);
   assert.deepEqual(profileFor('Ei1000G').alarms, []);
   assert.deepEqual(profileFor('Ei208WRF').alarms, []);
 });

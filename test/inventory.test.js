@@ -2,7 +2,7 @@
 
 const assert = require('node:assert/strict');
 const { test } = require('node:test');
-const { normalizeInventory } = require('../lib/inventory');
+const { normalizeInventory, summarizeInventory } = require('../lib/inventory');
 
 const sample = {
   serialNumber: 'SYNTHETIC-ABC',
@@ -66,8 +66,22 @@ test('fails discovery for missing or duplicate supported-device identities', () 
   assert.throws(() => normalizeInventory([sample, { ...sample, serialNumber: 'synthetic-abc' }]), /duplicate/);
 });
 
+test('pairs only COALARM records for Ei3018 and diagnoses mixed model types', () => {
+  const rows = [
+    { model: 'Ei3018', modelType: 'COALARM', serialNumber: 'SYNTHETIC-CO' },
+    { model: 'Ei3018', modelType: 'FIREALARM', serialNumber: 'SYNTHETIC-MISMATCH' },
+    { model: 'Ei3018', serialNumber: 'SYNTHETIC-MISSING-TYPE' },
+    { model: 'Ei3024', modelType: 'FIREALARM', serialNumber: 'SYNTHETIC-UNVERIFIED' },
+  ];
+  const devices = normalizeInventory(rows);
+  assert.deepEqual(Array.from(devices.values(), (record) => record.model), ['Ei3018']);
+  assert.deepEqual(summarizeInventory(rows, devices).models, [
+    { model: 'Ei3018', count: 3, pairable: true, pairableCount: 1 },
+    { model: 'Ei3024', count: 1, pairable: false, pairableCount: 0 },
+  ]);
+});
+
 test('diagnostics expose canonical model names and counts without household identifiers', () => {
-  const { summarizeInventory } = require('../lib/inventory');
   const property = { property: 'property/SYNTHETIC-PRIVATE-REFERENCE' };
   const rows = [
     { model: ' ei3030 ', serialNumber: 'SYNTHETIC-SERIAL', locationNickname: 'SYNTHETIC-PRIVATE-ROOM', _rel: property },
@@ -78,7 +92,10 @@ test('diagnostics expose canonical model names and counts without household iden
   const summary = summarizeInventory(rows, normalizeInventory(rows));
   assert.deepEqual(summary, {
     records: 4, pairable: 1, linkedProperties: 1, unknown: 1, missingModel: 1,
-    models: [{ model: 'Ei208WRF', count: 1, pairable: false }, { model: 'Ei3030', count: 1, pairable: true }],
+    models: [
+      { model: 'Ei208WRF', count: 1, pairable: false, pairableCount: 0 },
+      { model: 'Ei3030', count: 1, pairable: true, pairableCount: 1 },
+    ],
   });
   assert.doesNotMatch(JSON.stringify(summary), /SYNTHETIC/);
 });
