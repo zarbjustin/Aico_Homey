@@ -22,10 +22,18 @@
         <input class="homey-form-input" id="client-secret" type="password" autocomplete="new-password" required>
       </div>
     </fieldset>
-    <button class="homey-button-primary-full" type="submit" id="save">Save credentials</button>
+    <button class="homey-button-primary-full" type="submit" id="save">Verify and save credentials</button>
+    <button class="homey-button-secondary-full" type="button" id="test">Test connection</button>
     <button class="homey-button-secondary-full" type="button" id="remove">Remove saved credentials</button>
     <p id="status" role="status"></p>
+    <p id="tested-inventory"></p>
   </form>
+  <section aria-labelledby="connection-title">
+    <h2 id="connection-title" class="homey-title">Saved connection</h2>
+    <p id="connection-state" role="status"></p>
+    <p id="saved-inventory"></p>
+    <button class="homey-button-secondary-full" type="button" id="refresh-status">Refresh saved status</button>
+  </section>
   <form id="alarm-preview-form">
     <fieldset class="homey-form-fieldset" aria-describedby="alarm-preview-hint">
       <legend class="homey-form-legend">Alarm Flow preview</legend>
@@ -41,40 +49,111 @@
       const clientId = document.getElementById('client-id');
       const clientSecret = document.getElementById('client-secret');
       const save = document.getElementById('save');
+      const test = document.getElementById('test');
       const remove = document.getElementById('remove');
       const status = document.getElementById('status');
+      const testedInventory = document.getElementById('tested-inventory');
+      const savedInventory = document.getElementById('saved-inventory');
+      const connectionState = document.getElementById('connection-state');
+      const refreshStatus = document.getElementById('refresh-status');
+      let statusRequest = 0;
+
+      function inventoryText(summary) {
+        const models = summary.models.map(({ model, count, pairable }) => model + ' × ' + count +
+          (pairable ? '' : ' (awaiting verification)'));
+        const lines = [
+          summary.records + ' inventory records · ' + summary.pairable + ' eligible for pairing · ' + summary.linkedProperties + ' linked properties',
+        ];
+        if (models.length) lines.push(models.join(', '));
+        if (summary.unknown || summary.missingModel) {
+          lines.push(summary.unknown + ' unrecognised · ' + summary.missingModel + ' missing a model');
+        }
+        return lines.join('. ');
+      }
+
+      function loadStatus() {
+        const request = ++statusRequest;
+        Homey.api('GET', '/connection', {}, (error, result) => {
+          if (request !== statusRequest) return;
+          savedInventory.textContent = '';
+          if (error || !result) {
+            connectionState.textContent = 'Homey could not load the saved connection status.';
+            return;
+          }
+          const labels = {
+            unconfigured: 'No Web API key is saved.',
+            waiting: 'Key saved. Waiting for the first inventory update.',
+            available: 'Saved key is reading inventory. Latest update at ' + new Date(result.fetchedAt).toLocaleString() + '.',
+            stale: 'The saved key has no recent inventory update.',
+            unavailable: 'The last inventory update failed. Check or replace the Web API key if HomeLINK denied access.',
+          };
+          connectionState.textContent = labels[result.state] || 'Connection status is unknown.';
+          if (result.state === 'available') savedInventory.textContent = inventoryText(result.summary);
+        });
+      }
 
       function setBusy(busy) {
         save.disabled = busy;
+        test.disabled = busy;
         remove.disabled = busy;
+        clientId.readOnly = busy;
+        clientSecret.readOnly = busy;
       }
 
-      form.addEventListener('submit', (event) => {
-        event.preventDefault();
+      function verify(saveAfter) {
         const credentials = { clientId: clientId.value.trim(), clientSecret: clientSecret.value.trim() };
+        testedInventory.textContent = '';
         if (!credentials.clientId || !credentials.clientSecret) {
           status.textContent = 'Enter both a client ID and a client secret.';
           return;
         }
         setBusy(true);
-        Homey.set(key, credentials, (error) => {
-          setBusy(false);
-          status.textContent = error
-            ? 'Homey could not save the credentials.'
-            : 'Credentials saved. Add a HomeLINK device in Homey to check access.';
-          if (!error) form.reset();
+        status.textContent = 'Checking the Web API key…';
+        Homey.api('POST', '/connection/check', credentials, (error, result) => {
+          if (error || !result?.summary) {
+            setBusy(false);
+            status.textContent = error?.message || 'Homey could not verify the Web API key.';
+            return;
+          }
+          testedInventory.textContent = inventoryText(result.summary);
+          if (!saveAfter) {
+            setBusy(false);
+            status.textContent = 'Connection verified. This test used the key you entered.';
+            return;
+          }
+          Homey.set(key, credentials, (saveError) => {
+            setBusy(false);
+            status.textContent = saveError ? 'Homey could not save the verified key.'
+              : 'Verified key saved. Add a HomeLINK device in Homey to pair it.';
+            if (!saveError) {
+              form.reset();
+              loadStatus();
+            }
+          });
         });
+      }
+
+      form.addEventListener('submit', (event) => {
+        event.preventDefault();
+        verify(true);
       });
 
+      test.addEventListener('click', () => verify(false));
+      refreshStatus.addEventListener('click', loadStatus);
       remove.addEventListener('click', () => {
         setBusy(true);
         Homey.unset(key, (error) => {
           setBusy(false);
           status.textContent = error ? 'Homey could not remove the credentials.' : 'Saved credentials removed.';
-          if (!error) form.reset();
+          if (!error) {
+            form.reset();
+            testedInventory.textContent = '';
+            loadStatus();
+          }
         });
       });
 
+      loadStatus();
       const previewKey = 'homelink_alarm_flow_preview';
       const preview = document.getElementById('alarm-preview');
       const previewStatus = document.getElementById('alarm-preview-status');

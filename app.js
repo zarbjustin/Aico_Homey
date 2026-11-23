@@ -2,7 +2,7 @@
 
 const Homey = require('homey');
 const { HomeLinkClient, readCredentials } = require('./lib/homelink-client');
-const { normalizeInventory } = require('./lib/inventory');
+const { normalizeInventory, summarizeInventory } = require('./lib/inventory');
 
 const CREDENTIALS_KEY = 'homelink_web_api';
 const ALARM_PREVIEW_KEY = 'homelink_alarm_flow_preview';
@@ -11,6 +11,9 @@ const MAX_CONCURRENT_PROPERTIES = 4;
 
 class HomeLinkApp extends Homey.App {
   #client;
+  #checkClient;
+  #checkRetryAt = 0;
+  #inventoryStatus;
   #devices = new Set();
   #sync;
   #repeat = false;
@@ -38,6 +41,7 @@ class HomeLinkApp extends Homey.App {
     this.homey.settings.removeListener('set', this.#settingsChanged);
     this.homey.settings.removeListener('unset', this.#settingsChanged);
     this.#client?.close();
+    this.#checkClient?.close();
     this.#devices.clear();
   }
 
@@ -54,17 +58,63 @@ class HomeLinkApp extends Homey.App {
     const credentials = readCredentials(this.homey.settings.get(CREDENTIALS_KEY));
     this.#client?.close();
     this.#client = credentials ? new HomeLinkClient(credentials) : undefined;
+    this.#inventoryStatus = undefined;
     for (const device of this.#devices) device.invalidateObservations();
     this.#resetAlarmPreview();
     this.#requestSync();
   }
 
+  async #readInventory(client) {
+    const snapshot = await client.getInventory();
+    const devices = normalizeInventory(snapshot.rows);
+    return { devices, fetchedAt: snapshot.fetchedAt, summary: summarizeInventory(snapshot.rows, devices) };
+  }
+
+  async checkConnection(input) {
+    const credentials = readCredentials(input);
+    if (!credentials) throw new Error('Enter a HomeLINK client ID and client secret.');
+    if (this.#stopped) throw new Error('The HomeLINK app is stopping.');
+    if (this.#checkClient) throw new Error('A HomeLINK access check is already running.');
+    if (Math.max(this.#checkRetryAt, this.#client?.retryAt ?? 0) > Date.now()) {
+      throw new Error('HomeLINK rate limited the request. Try again later.');
+    }
+
+    const client = new HomeLinkClient(credentials);
+    this.#checkClient = client;
+    try {
+      const { fetchedAt, summary } = await this.#readInventory(client);
+      return { fetchedAt, summary };
+    } finally {
+      this.#checkRetryAt = Math.max(this.#checkRetryAt, client.retryAt);
+      client.close();
+      this.#checkClient = undefined;
+    }
+  }
+
+  getConnectionStatus() {
+    const status = this.#inventoryStatus;
+    if (!this.#client) return { state: 'unconfigured' };
+    if (!status) return { state: 'waiting' };
+    if (status.state === 'unavailable') return status;
+
+    const age = Date.now() - status.fetchedAt;
+    if (age < 0 || age > 3 * POLL_MS) return { state: 'stale', fetchedAt: status.fetchedAt };
+    return status;
+  }
+
   async discover() {
     const client = this.#client;
     if (!client) throw new Error('Add HomeLINK Web API credentials in the app settings.');
-    const snapshot = await client.getInventory();
-    if (client !== this.#client || this.#stopped) throw new Error('HomeLINK credentials changed.');
-    return { devices: normalizeInventory(snapshot.rows), fetchedAt: snapshot.fetchedAt };
+
+    try {
+      const { devices, fetchedAt, summary } = await this.#readInventory(client);
+      if (client !== this.#client || this.#stopped) throw new Error('HomeLINK credentials changed.');
+      this.#inventoryStatus = { state: 'available', fetchedAt, summary };
+      return { devices, fetchedAt };
+    } catch (error) {
+      if (client === this.#client && !this.#stopped) this.#inventoryStatus = { state: 'unavailable' };
+      throw error;
+    }
   }
 
   addDevice(device) {
