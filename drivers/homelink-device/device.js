@@ -4,12 +4,13 @@ const Homey = require('homey');
 const { AlertState, isFreshAlertSnapshot } = require('../../lib/alert-state');
 const { ALARM_KINDS, profileFor } = require('../../lib/device-profiles');
 
+const INVENTORY_MAX_AGE_MS = 180_000;
 const MAINTENANCE_CAPABILITIES = ['homelink_maintenance_alerts', 'homelink_maintenance_retrieved_at'];
 
 class HomeLinkDevice extends Homey.Device {
   #maintenance = new AlertState();
   #alarmStates = new Map(ALARM_KINDS.map((kind) => [kind, new AlertState()]));
-  #inventoryFetchedAt = null;
+  #inventory = null;
 
   async onInit() {
     await this.setUnavailable('Waiting for HomeLINK data.');
@@ -30,7 +31,7 @@ class HomeLinkDevice extends Homey.Device {
   }
 
   invalidateObservations() {
-    this.#inventoryFetchedAt = null;
+    this.#inventory = null;
     this.#maintenance.reset();
     this.invalidateAlarmPreview();
   }
@@ -39,13 +40,23 @@ class HomeLinkDevice extends Homey.Device {
     for (const state of this.#alarmStates.values()) state.reset();
   }
 
+  #hasRecentInventory(now) {
+    if (!this.getAvailable() || !this.#inventory) return false;
+    const age = now - this.#inventory.fetchedAt;
+    return age >= 0 && age <= INVENTORY_MAX_AGE_MS;
+  }
+
   getDashboardStatus(now = Date.now()) {
-    const fetchedAt = this.#inventoryFetchedAt;
-    const reporting = this.getAvailable() && fetchedAt !== null && fetchedAt <= now && now - fetchedAt <= 180_000;
+    const reporting = this.#hasRecentInventory(now);
     return {
-      inventoryFetchedAt: reporting ? fetchedAt : null,
+      inventoryFetchedAt: reporting ? this.#inventory.fetchedAt : null,
       maintenanceCount: reporting ? this.#maintenance.count(now) ?? null : null,
     };
+  }
+
+  getServiceDates(now = Date.now()) {
+    if (!this.#hasRecentInventory(now)) throw new Error('A recent HomeLINK inventory update is required.');
+    return this.#inventory;
   }
 
   hasFreshMaintenance() {
@@ -80,7 +91,11 @@ class HomeLinkDevice extends Homey.Device {
     const change = fresh ? this.#maintenance.observe(record.propertyReference, alerts.fetchedAt, ids) : undefined;
     if (!this.getAvailable()) await this.setAvailable();
     if (!current()) return;
-    this.#inventoryFetchedAt = fetchedAt;
+    this.#inventory = {
+      fetchedAt,
+      lastTested: record.values.homelink_last_tested,
+      replaceBy: record.values.homelink_replace_by,
+    };
     await this.#updateAlarmFlows(record, alerts, current);
     if (current() && change) {
       try {

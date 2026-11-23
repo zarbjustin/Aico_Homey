@@ -54,7 +54,8 @@ test('pairs, migrates, dispatches gated Flow cards, and recovers without replayi
     return Response.json({ results: [{
       model: 'Ei3030',
       serialNumber: 'SYNTHETIC-ADAPTER',
-      status: { operationalStatus: 'GOOD' },
+      status: { operationalStatus: 'GOOD', lastTestedDate: '1969-12-31' },
+      replaceDate: '1970-01-03T00:00:00Z',
       _rel: { property: 'property/SYNTHETIC-HOME' },
     }] });
   });
@@ -65,6 +66,7 @@ test('pairs, migrates, dispatches gated Flow cards, and recovers without replayi
     settings,
     setInterval: t.mock.fn(),
     clearInterval: t.mock.fn(),
+    clock: { getTimezone: () => 'Europe/London' },
     flow: {
       getDeviceTriggerCard: (id) => {
         const card = flowManifest.triggers.find((trigger) => trigger.id === id);
@@ -130,6 +132,12 @@ test('pairs, migrates, dispatches gated Flow cards, and recovers without replayi
   const dataAvailable = conditionListeners.get('homelink_maintenance_data_available');
   assert.equal(await active({ device }), true);
   assert.equal(await dataAvailable({ device }), true);
+  const replacementDue = conditionListeners.get('homelink_replacement_due');
+  const testReminder = conditionListeners.get('homelink_test_reminder');
+  assert.equal(await replacementDue({ device, days: 2 }), true);
+  assert.equal(await replacementDue({ device, days: 1 }), false);
+  assert.equal(await testReminder({ device, days: 1 }), true);
+  assert.equal(await testReminder({ device, days: 2 }), false);
   assert.equal(triggers.length, 0);
 
   const [poll] = homey.setInterval.mock.calls[0].arguments;
@@ -222,6 +230,8 @@ test('pairs, migrates, dispatches gated Flow cards, and recovers without replayi
   settings.emit('unset', 'homelink_web_api');
   assert.match((await unavailable)[0], /Add HomeLINK Web API credentials/);
   assert.equal(available, false);
+  await assert.rejects(replacementDue({ device, days: 2 }), /recent HomeLINK inventory update/);
+  await assert.rejects(testReminder({ device, days: 1 }), /recent HomeLINK inventory update/);
   await assert.rejects(driver.onPairListDevices(), /Add HomeLINK Web API credentials/);
 });
 
