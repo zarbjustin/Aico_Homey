@@ -2,13 +2,15 @@
 
 An independent Homey Pro SDK 3 app that reads device inventory and maintenance information from the Aico HomeLINK cloud. The Ei1000G gateway sends data to HomeLINK, and Homey reads that data over HTTPS. Homey needs internet access and a HomeLINK Dashboard account that can create a **Web API access key with Standard scope**.
 
-**v0.3 is a development build.** The code can discover and pair an Ei1000G, Ei3014, Ei3016, Ei3028, Ei3030 or Ei450 when the model appears in the supported HomeLINK inventory. Each tile can show the reported operational and collection statuses, last seen, last tested and replacement dates, and when Homey retrieved the record. Missing or unrecognised fields show **Unknown**. A failed inventory refresh marks paired devices unavailable. Cloud snapshot retrieval and last device contact are separate timestamps.
+**v0.4 is a development build.** The code can discover and pair an Ei1000G, Ei3014, Ei3016, Ei3028, Ei3030 or Ei450 when the model appears in the supported HomeLINK inventory. Each tile can show the reported operational and collection statuses, last seen, last tested and replacement dates, and when Homey retrieved the record. Missing or unrecognised fields show **Unknown**. A failed inventory refresh marks paired devices unavailable. Cloud snapshot retrieval and last device contact are separate timestamps.
 
 Device tiles also show the count of active faults and maintenance alerts reported by HomeLINK. An incomplete, ambiguous or unavailable alert feed shows **Unknown** for maintenance while the app can still display inventory information. The maintenance retrieval timestamp is shown separately.
 
 Use the device's [maintenance Flow cards](docs/flows.md) in Flow or Advanced Flow for new reports, when reports clear and to check whether maintenance data is available.
 
-This app provides supplementary visibility. The installed Aico system remains responsible for local detection, audible alerts and testing. Fire and CO event notifications, MQTT and Flow cards are planned after live API validation. The Ei208WRF still needs model-specific verification.
+The [alarm Flow preview](docs/alarm-preview.md) adds separate fire and carbon monoxide report cards, disabled by default. Offline tests inject synthetic cloud responses through the app and exercise the device-scoped Homey SDK adapters. The [HomeLINK overview](docs/widget.md) widget shows coverage and maintenance from the app’s cache.
+
+The Aico system remains responsible for local detection, audible alerts and testing. Cloud reports are supplementary and can arrive late. MQTT and model-specific Ei208WRF support are pending live evidence.
 
 ## Developer setup
 

@@ -5,6 +5,7 @@ const { HomeLinkClient, readCredentials } = require('./lib/homelink-client');
 const { normalizeInventory } = require('./lib/inventory');
 
 const CREDENTIALS_KEY = 'homelink_web_api';
+const ALARM_PREVIEW_KEY = 'homelink_alarm_flow_preview';
 const POLL_MS = 60_000;
 const MAX_CONCURRENT_PROPERTIES = 4;
 
@@ -15,8 +16,13 @@ class HomeLinkApp extends Homey.App {
   #repeat = false;
   #stopped = false;
   #timer;
+  #alarmPreviewSince = null;
   #settingsChanged = (key) => {
     if (key === CREDENTIALS_KEY) this.#configure();
+    if (key === ALARM_PREVIEW_KEY) {
+      this.#resetAlarmPreview();
+      this.#requestSync();
+    }
   };
 
   onInit() {
@@ -35,11 +41,21 @@ class HomeLinkApp extends Homey.App {
     this.#devices.clear();
   }
 
+  get alarmPreviewSince() {
+    return this.#alarmPreviewSince;
+  }
+
+  #resetAlarmPreview() {
+    this.#alarmPreviewSince = this.homey.settings.get(ALARM_PREVIEW_KEY) === true ? Date.now() : null;
+    for (const device of this.#devices) device.invalidateAlarmPreview();
+  }
+
   #configure() {
     const credentials = readCredentials(this.homey.settings.get(CREDENTIALS_KEY));
     this.#client?.close();
     this.#client = credentials ? new HomeLinkClient(credentials) : undefined;
-    for (const device of this.#devices) device.invalidateMaintenance();
+    for (const device of this.#devices) device.invalidateObservations();
+    this.#resetAlarmPreview();
     this.#requestSync();
   }
 
@@ -110,12 +126,12 @@ class HomeLinkApp extends Homey.App {
       if (!current()) return;
       try {
         if (!snapshot) {
-          device.invalidateMaintenance();
+          device.invalidateObservations();
           await device.setUnavailable(message);
           return;
         }
         if (!record) {
-          device.invalidateMaintenance();
+          device.invalidateObservations();
           await device.setUnavailable('This device is missing from the current HomeLINK inventory.');
           return;
         }
@@ -123,7 +139,7 @@ class HomeLinkApp extends Homey.App {
         await device.applyInventory(record, snapshot.fetchedAt, alerts, current);
       } catch {
         if (current()) {
-          device.invalidateMaintenance();
+          device.invalidateObservations();
           await device.setUnavailable('Homey could not display the HomeLINK data.');
         }
       }

@@ -2,34 +2,139 @@
   "triggers": [
     {
       "id": "homelink_maintenance_reported",
-      "title": { "en": "HomeLINK reports new maintenance alerts" },
-      "hint": { "en": "Runs when Homey sees new faults or maintenance alerts for this device in a fresh HomeLINK refresh." },
+      "title": {
+        "en": "HomeLINK reports new maintenance alerts"
+      },
+      "hint": {
+        "en": "Runs when Homey sees new faults or maintenance alerts for this device in a fresh HomeLINK refresh."
+      },
       "tokens": [
-        { "name": "new_count", "type": "number", "title": { "en": "New reports" }, "example": 1 },
-        { "name": "active_count", "type": "number", "title": { "en": "Active reports" }, "example": 2 },
-        { "name": "observed_at", "type": "string", "title": { "en": "Retrieved at (UTC)" }, "example": "2026-06-01T12:30:00.000Z" }
+        {
+          "name": "new_count",
+          "type": "number",
+          "title": {
+            "en": "New reports"
+          },
+          "example": 1
+        },
+        {
+          "name": "active_count",
+          "type": "number",
+          "title": {
+            "en": "Active reports"
+          },
+          "example": 2
+        },
+        {
+          "name": "observed_at",
+          "type": "string",
+          "title": {
+            "en": "Retrieved at (UTC)"
+          },
+          "example": "2026-06-01T12:30:00.000Z"
+        }
       ]
     },
     {
       "id": "homelink_maintenance_cleared",
-      "title": { "en": "HomeLINK stops reporting maintenance alerts" },
-      "hint": { "en": "Runs when a fresh HomeLINK refresh reports zero active maintenance alerts after previously reporting one or more." },
+      "title": {
+        "en": "HomeLINK stops reporting maintenance alerts"
+      },
+      "hint": {
+        "en": "Runs when a fresh HomeLINK refresh reports zero active maintenance alerts after previously reporting one or more."
+      },
       "tokens": [
-        { "name": "previous_count", "type": "number", "title": { "en": "Previously active reports" }, "example": 1 },
-        { "name": "observed_at", "type": "string", "title": { "en": "Retrieved at (UTC)" }, "example": "2026-06-01T12:35:00.000Z" }
+        {
+          "name": "previous_count",
+          "type": "number",
+          "title": {
+            "en": "Previously active reports"
+          },
+          "example": 1
+        },
+        {
+          "name": "observed_at",
+          "type": "string",
+          "title": {
+            "en": "Retrieved at (UTC)"
+          },
+          "example": "2026-06-01T12:35:00.000Z"
+        }
+      ]
+    },
+    {
+      "id": "homelink_fire_reported",
+      "title": {
+        "en": "HomeLINK reports a fire alarm"
+      },
+      "hint": {
+        "en": "Preview. Runs on a newly observed cloud report when alarm Flow preview is enabled. Delivery can be delayed."
+      },
+      "tokens": [
+        {
+          "name": "new_count",
+          "type": "number",
+          "title": {
+            "en": "New reports"
+          },
+          "example": 1
+        },
+        {
+          "name": "observed_at",
+          "type": "string",
+          "title": {
+            "en": "Retrieved at (UTC)"
+          },
+          "example": "2026-06-01T12:30:00.000Z"
+        }
+      ]
+    },
+    {
+      "id": "homelink_co_reported",
+      "title": {
+        "en": "HomeLINK reports a carbon monoxide alarm"
+      },
+      "hint": {
+        "en": "Preview. Runs on a newly observed cloud report when alarm Flow preview is enabled. Delivery can be delayed."
+      },
+      "tokens": [
+        {
+          "name": "new_count",
+          "type": "number",
+          "title": {
+            "en": "New reports"
+          },
+          "example": 1
+        },
+        {
+          "name": "observed_at",
+          "type": "string",
+          "title": {
+            "en": "Retrieved at (UTC)"
+          },
+          "example": "2026-06-01T12:30:00.000Z"
+        }
       ]
     }
   ],
   "conditions": [
     {
       "id": "homelink_maintenance_active",
-      "title": { "en": "HomeLINK reports !{{active|no active}} maintenance alerts" },
-      "hint": { "en": "Checks the current HomeLINK snapshot and stops the Flow if maintenance data is unavailable." }
+      "title": {
+        "en": "HomeLINK reports !{{active|no active}} maintenance alerts"
+      },
+      "hint": {
+        "en": "Checks the current HomeLINK snapshot and stops the Flow if maintenance data is unavailable."
+      }
     },
     {
       "id": "homelink_maintenance_data_available",
-      "title": { "en": "HomeLINK maintenance data !{{is|isn't}} available" },
-      "hint": { "en": "Checks whether Homey has a valid, recent maintenance snapshot for this device." }
+      "title": {
+        "en": "HomeLINK maintenance data !{{is|isn't}} available"
+      },
+      "hint": {
+        "en": "Checks whether Homey has a valid, recent maintenance snapshot for this device."
+      }
     }
   ]
 }

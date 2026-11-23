@@ -1,0 +1,66 @@
+:root {
+  color-scheme: light dark;
+}
+
+body {
+  margin: 0;
+  background: var(--homey-background-color, light-dark(#fff, #202125));
+  color: var(--homey-text-color, light-dark(#182027, #f0f3f6));
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+main {
+  padding: var(--homey-su-4, 16px);
+}
+
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--homey-su-3, 12px);
+  margin: 0;
+}
+
+.metric {
+  border-radius: 12px;
+  padding: 10px 12px;
+  min-width: 0;
+  background: var(--homey-color-mono-100, light-dark(#f2f6f7, #2a3236));
+}
+
+dt, .metric span, .status {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.35;
+  color: var(--homey-text-color-light, light-dark(#465760, #bccad0));
+}
+
+dd {
+  margin: 2px 0 1px;
+}
+
+dd strong, dd span {
+  display: block;
+}
+
+dd strong {
+  font-size: 24px;
+  font-weight: 650;
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+strong[data-tone="attention"] {
+  color: var(--homey-text-color-warning, light-dark(#8a3c04, #ffc181));
+}
+
+.status {
+  margin-top: var(--homey-su-3, 12px);
+}
+
+@media (max-width: 245px) {
+  main { padding: 10px; }
+  .metrics { gap: 6px; }
+  .metric { padding: 8px; }
+  dt, .metric span, .status { font-size: 11px; }
+}

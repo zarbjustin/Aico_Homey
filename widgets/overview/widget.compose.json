@@ -1,0 +1,7 @@
+{
+  "name": { "en": "HomeLINK overview" },
+  "height": 160,
+  "api": {
+    "getOverview": { "method": "GET", "path": "/" }
+  }
+}

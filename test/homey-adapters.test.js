@@ -21,13 +21,15 @@ class FakeHomeyObject {
   constructor(homey) { this.homey = homey; }
 }
 
-test('pairs, migrates, dispatches Flow cards and recovers without replaying', { timeout: 3000 }, async (t) => {
+test('pairs, migrates, dispatches gated Flow cards, and recovers without replaying', { timeout: 5000 }, async (t) => {
   const settings = new EventEmitter();
   let credentials = { clientId: 'test-id', clientSecret: 'test-secret' };
   let now = 10_000;
   let alertsAvailable = true;
+  let preview = false;
   let alertIds = ['initial-event'];
-  settings.get = () => credentials;
+  let alarms = [['existing-fire', 'FIRE_ALARM']];
+  settings.get = (key) => key === 'homelink_alarm_flow_preview' ? preview : credentials;
   t.mock.method(Date, 'now', () => now);
   t.mock.method(globalThis, 'fetch', async (url) => {
     const { hostname, pathname } = new URL(url);
@@ -36,16 +38,18 @@ test('pairs, migrates, dispatches Flow cards and recovers without replaying', { 
     }
     if (pathname === '/v1/property/SYNTHETIC-HOME/alerts') {
       if (!alertsAvailable) return Response.json({}, { status: 503 });
-      return Response.json({ count: alertIds.length, results: alertIds.map((id) => ({
-        id,
+      const shared = {
         type: 'DEVICE',
         status: 'ACTIVE',
-        category: 'PRIORITY_MAINTENANCE',
-        eventType: 'HEAD_REMOVED',
         serialNumber: 'SYNTHETIC-ADAPTER',
         propertyReference: 'SYNTHETIC-HOME',
         _rel: { device: 'device/SYNTHETIC-ADAPTER', property: 'property/SYNTHETIC-HOME' },
-      })) });
+      };
+      const results = [
+        ...alertIds.map((id) => ({ ...shared, id, category: 'PRIORITY_MAINTENANCE', eventType: 'HEAD_REMOVED' })),
+        ...alarms.map(([id, eventType, eventTypeId]) => ({ ...shared, id, category: 'ALARM', eventType, eventTypeId })),
+      ];
+      return Response.json({ count: results.length, results });
     }
     return Response.json({ results: [{
       model: 'Ei3030',
@@ -84,6 +88,7 @@ test('pairs, migrates, dispatches Flow cards and recovers without replaying', { 
   const app = new App(homey);
   homey.app = app;
   app.onInit();
+  assert.equal(app.alarmPreviewSince, null);
   t.after(() => app.onUninit());
 
   const driver = new Driver(homey);
@@ -108,7 +113,7 @@ test('pairs, migrates, dispatches Flow cards and recovers without replaying', { 
   device.setUnavailable = async (message) => { available = false; events.emit('unavailable', message); };
 
   const triggers = [];
-  for (const id of ['homelink_maintenance_reported', 'homelink_maintenance_cleared']) {
+  for (const { id } of flowManifest.triggers) {
     flowEvents.on(id, (event) => triggers.push({ id, ...event }));
   }
   const updated = once(events, 'available');
@@ -166,6 +171,51 @@ test('pairs, migrates, dispatches Flow cards and recovers without replaying', { 
   assert.equal((await recovered)[0], new Date(now).toISOString());
   assert.equal(await active({ device }), true);
   assert.equal(triggers.length, 2);
+
+  now += 1;
+  preview = true;
+  settings.emit('set', 'homelink_alarm_flow_preview');
+  assert.equal(app.alarmPreviewSince, now);
+  const seeded = once(events, 'homelink_maintenance_retrieved_at');
+  now += 300_000;
+  poll();
+  await seeded;
+  assert.equal(triggers.length, 2);
+
+  const co = once(flowEvents, 'homelink_co_reported');
+  now += 300_000;
+  alarms = [...alarms, ['new-co', 'CO_ALARM']];
+  poll();
+  assert.deepEqual((await co)[0], { device, tokens: { new_count: 1, observed_at: new Date(now).toISOString() } });
+
+  const fire = once(flowEvents, 'homelink_fire_reported');
+  now += 300_000;
+  alarms = [['new-fire', 'FIRE_ALARM'], ['new-co', 'CO_ALARM'], ['repeat', 'CO_ALARM'], ['repeat', 'CO_ALARM']];
+  poll();
+  assert.deepEqual((await fire)[0], { device, tokens: { new_count: 1, observed_at: new Date(now).toISOString() } });
+  assert.deepEqual(triggers.slice(2).map(({ id }) => id), ['homelink_co_reported', 'homelink_fire_reported', 'homelink_co_reported']);
+
+  const invalid = once(events, 'homelink_maintenance_retrieved_at');
+  now += 300_000;
+  alarms = [['invalid', 'CO_ALARM', 'FIRE_ALARM']];
+  poll();
+  await invalid;
+  const afterInvalid = once(events, 'homelink_maintenance_retrieved_at');
+  now += 300_000;
+  alarms = [['after-invalid', 'FIRE_ALARM']];
+  poll();
+  await afterInvalid;
+  assert.equal(triggers.length, 5);
+
+  preview = false;
+  settings.emit('unset', 'homelink_alarm_flow_preview');
+  assert.equal(app.alarmPreviewSince, null);
+  const afterDisable = once(events, 'homelink_maintenance_retrieved_at');
+  now += 300_000;
+  alarms = [['disabled', 'FIRE_ALARM'], ['disabled-co', 'CO_ALARM']];
+  poll();
+  await afterDisable;
+  assert.equal(triggers.length, 5);
 
   const unavailable = once(events, 'unavailable');
   credentials = undefined;

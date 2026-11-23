@@ -1,7 +1,7 @@
 {
   "_comment": "This file is generated. Please edit .homeycompose/app.json instead.",
   "id": "uk.co.zarb.aico",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "compatibility": ">=12.9.0",
   "sdk": 3,
   "runtime": "nodejs",
@@ -113,6 +113,74 @@
             "filter": "driver_id=homelink-device"
           }
         ]
+      },
+      {
+        "id": "homelink_fire_reported",
+        "title": {
+          "en": "HomeLINK reports a fire alarm"
+        },
+        "hint": {
+          "en": "Preview. Runs on a newly observed cloud report when alarm Flow preview is enabled. Delivery can be delayed."
+        },
+        "tokens": [
+          {
+            "name": "new_count",
+            "type": "number",
+            "title": {
+              "en": "New reports"
+            },
+            "example": 1
+          },
+          {
+            "name": "observed_at",
+            "type": "string",
+            "title": {
+              "en": "Retrieved at (UTC)"
+            },
+            "example": "2026-06-01T12:30:00.000Z"
+          }
+        ],
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=homelink-device"
+          }
+        ]
+      },
+      {
+        "id": "homelink_co_reported",
+        "title": {
+          "en": "HomeLINK reports a carbon monoxide alarm"
+        },
+        "hint": {
+          "en": "Preview. Runs on a newly observed cloud report when alarm Flow preview is enabled. Delivery can be delayed."
+        },
+        "tokens": [
+          {
+            "name": "new_count",
+            "type": "number",
+            "title": {
+              "en": "New reports"
+            },
+            "example": 1
+          },
+          {
+            "name": "observed_at",
+            "type": "string",
+            "title": {
+              "en": "Retrieved at (UTC)"
+            },
+            "example": "2026-06-01T12:30:00.000Z"
+          }
+        ],
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=homelink-device"
+          }
+        ]
       }
     ],
     "conditions": [
@@ -193,6 +261,22 @@
       "id": "homelink-device"
     }
   ],
+  "widgets": {
+    "overview": {
+      "name": {
+        "en": "HomeLINK overview"
+      },
+      "height": 160,
+      "api": {
+        "getOverview": {
+          "method": "GET",
+          "path": "/"
+        }
+      },
+      "id": "overview",
+      "settings": []
+    }
+  },
   "capabilities": {
     "homelink_collection_status": {
       "type": "string",
