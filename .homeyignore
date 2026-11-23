@@ -1,0 +1,11 @@
+.github/
+docs/
+test/
+AGENTS.md
+.env
+.env.*
+*.local.json
+*.log
+private/
+diagnostics/
+.DS_Store

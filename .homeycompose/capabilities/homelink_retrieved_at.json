@@ -1,0 +1,9 @@
+{
+  "type": "string",
+  "title": {
+    "en": "Retrieved from HomeLINK (UTC)"
+  },
+  "getable": true,
+  "setable": false,
+  "uiComponent": "sensor"
+}

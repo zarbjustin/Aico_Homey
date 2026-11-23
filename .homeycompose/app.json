@@ -1,0 +1,22 @@
+{
+  "id": "uk.co.zarb.aico",
+  "version": "0.1.0",
+  "compatibility": ">=12.9.0",
+  "sdk": 3,
+  "runtime": "nodejs",
+  "platforms": ["local"],
+  "brandColor": "#174555",
+  "name": { "en": "Aico HomeLINK" },
+  "description": { "en": "View Aico HomeLINK device inventory and reported status." },
+  "category": ["security"],
+  "tags": { "en": ["Aico", "HomeLINK", "SmartLINK"] },
+  "permissions": [],
+  "author": { "name": "zarbjustin" },
+  "source": "https://github.com/zarbjustin/Aico_Homey",
+  "support": "https://github.com/zarbjustin/Aico_Homey/issues",
+  "images": {
+    "small": "/assets/images/small.png",
+    "large": "/assets/images/large.png",
+    "xlarge": "/assets/images/xlarge.png"
+  }
+}

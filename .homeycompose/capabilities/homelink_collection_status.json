@@ -1,0 +1,9 @@
+{
+  "type": "string",
+  "title": {
+    "en": "Reported data collection"
+  },
+  "getable": true,
+  "setable": false,
+  "uiComponent": "sensor"
+}

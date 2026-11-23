@@ -1,0 +1,10 @@
+.homeybuild/
+node_modules/
+env.json
+.env
+.env.*
+*.local.json
+*.log
+private/
+diagnostics/
+.DS_Store
