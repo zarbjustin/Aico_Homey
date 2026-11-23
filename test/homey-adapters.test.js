@@ -268,7 +268,7 @@ test('connection checks reject a candidate without replacing saved access', asyn
   const candidate = (clientId) => api.checkConnection({ homey, body: { clientId, clientSecret: 'candidate-secret' } });
   await assert.rejects(candidate('bad-id'), { message: 'HomeLINK denied access. Check the Web API credentials and scope.' });
   const check = await candidate('candidate-id');
-  assert.deepEqual(check.summary.models, [{ model: 'Ei3028', count: 1, pairable: true }]);
+  assert.deepEqual(check.summary.models, [{ model: 'Ei3028', count: 1, pairable: true, pairableCount: 1 }]);
   assert.doesNotMatch(JSON.stringify(check), /candidate-secret|SYNTHETIC-PRIVATE-SERIAL/);
   assert.deepEqual(await api.getConnectionStatus({ homey }), { state: 'waiting' });
   assert.equal(settings.set.mock.callCount(), 0);
