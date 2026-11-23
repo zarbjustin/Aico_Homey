@@ -4,7 +4,7 @@ const assert = require('node:assert/strict');
 const { test } = require('node:test');
 const { deviceId } = require('../lib/identity');
 const { normalizeInventory } = require('../lib/inventory');
-const { countActiveMaintenance } = require('../lib/maintenance');
+const { activeMaintenanceByDevice } = require('../lib/maintenance');
 
 const property = 'SYNTHETIC-HOME';
 const serial = 'SYNTHETIC-ALARM';
@@ -21,7 +21,7 @@ const sample = {
 
 test('counts verified active maintenance and faults once per event and device', () => {
   const second = 'SYNTHETIC-ALARM-2';
-  const records = countActiveMaintenance([
+  const records = activeMaintenanceByDevice([
     sample,
     { ...sample, serialNumber: 'synthetic-alarm' },
     { ...sample, id: 'fault-1', category: 'FAULT', eventType: 'SYNTHETIC_FAULT' },
@@ -32,7 +32,8 @@ test('counts verified active maintenance and faults once per event and device', 
     { ...sample, id: 'co-1', category: 'ALARM', eventType: 'CO_ALARM' },
     { ...sample, id: 'property-1', type: 'PROPERTY', serialNumber: null },
   ], property);
-  assert.deepEqual([...records], [[deviceId(serial), 2], [deviceId(second), 1]]);
+  assert.deepEqual(records.get(deviceId(serial)), new Set(['synthetic-event-1', 'fault-1']));
+  assert.deepEqual(records.get(deviceId(second)), new Set(['mains-1']));
 });
 
 test('treats ambiguous maintenance rows as unknown instead of reporting zero', () => {
@@ -42,8 +43,8 @@ test('treats ambiguous maintenance rows as unknown instead of reporting zero', (
     { ...sample, propertyReference: 'OTHER-PROPERTY' },
     { ...sample, _rel: { ...sample._rel, property: 'property/OTHER-PROPERTY' } },
     { ...sample, id: '' },
-  ]) assert.throws(() => countActiveMaintenance([row], property), /ambiguous/);
-  assert.throws(() => countActiveMaintenance([sample, { ...sample, status: 'RESOLVED' }], property), /conflicting alerts/);
+  ]) assert.throws(() => activeMaintenanceByDevice([row], property), /ambiguous/);
+  assert.throws(() => activeMaintenanceByDevice([sample, { ...sample, status: 'RESOLVED' }], property), /conflicting alerts/);
 });
 
 test('preserves the paired identity when discovering property references', () => {

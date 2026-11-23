@@ -135,7 +135,7 @@ test('shares one bearer token and one fresh alert snapshot per property', async 
   ]);
   assert.equal(first, second);
   assert.notEqual(first, other);
-  assert.equal(first.counts.size, 0);
+  assert.equal(first.activeByDevice.size, 0);
   assert.deepEqual(calls.map(({ url }) => url.pathname), [
     '/oauth2', '/v1/device', '/v1/property/SYNTHETIC-A/alerts', '/v1/property/SYNTHETIC-B/alerts',
   ]);
@@ -159,7 +159,7 @@ test('rejects unsafe property references and partial alert replies', async () =>
   assert.equal(calls.length, 0);
   await assert.rejects(client.getPropertyMaintenance('SYNTHETIC-A'), /incomplete property alert/);
   await assert.rejects(client.getPropertyMaintenance('SYNTHETIC-A'), /incomplete property alert/);
-  assert.equal((await client.getPropertyMaintenance('SYNTHETIC-A')).counts.size, 0);
+  assert.equal((await client.getPropertyMaintenance('SYNTHETIC-A')).activeByDevice.size, 0);
 });
 
 test('renews only once when inventory and property requests both reject the same token', async () => {
