@@ -1,0 +1,23 @@
+{
+  "name": { "en": "HomeLINK device" },
+  "class": "sensor",
+  "platforms": ["local"],
+  "connectivity": ["cloud"],
+  "images": {
+    "small": "{{driverAssetsPath}}/images/small.png",
+    "large": "{{driverAssetsPath}}/images/large.png",
+    "xlarge": "{{driverAssetsPath}}/images/xlarge.png"
+  },
+  "capabilities": [
+    "homelink_operational_status",
+    "homelink_collection_status",
+    "homelink_last_seen",
+    "homelink_last_tested",
+    "homelink_replace_by",
+    "homelink_retrieved_at"
+  ],
+  "pair": [
+    { "id": "list_devices", "template": "list_devices", "navigation": { "next": "add_devices" } },
+    { "id": "add_devices", "template": "add_devices" }
+  ]
+}

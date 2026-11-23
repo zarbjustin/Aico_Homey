@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>HomeLINK Web API</title>
+  <script src="/homey.js" data-origin="settings"></script>
+</head>
+<body>
+  <header class="homey-header">
+    <h1 class="homey-title">HomeLINK Web API</h1>
+    <p class="homey-subtitle">Enter a Web API key with Standard scope from the HomeLINK Dashboard. Homey uses these credentials for device discovery and status updates.</p>
+  </header>
+  <form id="credentials">
+    <fieldset class="homey-form-fieldset">
+      <legend class="homey-form-legend">Access key</legend>
+      <div class="homey-form-group">
+        <label class="homey-form-label" for="client-id">Client ID</label>
+        <input class="homey-form-input" id="client-id" autocomplete="off" spellcheck="false" required>
+      </div>
+      <div class="homey-form-group">
+        <label class="homey-form-label" for="client-secret">Client secret</label>
+        <input class="homey-form-input" id="client-secret" type="password" autocomplete="new-password" required>
+      </div>
+    </fieldset>
+    <button class="homey-button-primary-full" type="submit" id="save">Save credentials</button>
+    <button class="homey-button-secondary-full" type="button" id="remove">Remove saved credentials</button>
+    <p id="status" role="status"></p>
+  </form>
+  <script>
+    function onHomeyReady(Homey) {
+      const key = 'homelink_web_api';
+      const form = document.getElementById('credentials');
+      const clientId = document.getElementById('client-id');
+      const clientSecret = document.getElementById('client-secret');
+      const save = document.getElementById('save');
+      const remove = document.getElementById('remove');
+      const status = document.getElementById('status');
+
+      function setBusy(busy) {
+        save.disabled = busy;
+        remove.disabled = busy;
+      }
+
+      form.addEventListener('submit', (event) => {
+        event.preventDefault();
+        const credentials = { clientId: clientId.value.trim(), clientSecret: clientSecret.value.trim() };
+        if (!credentials.clientId || !credentials.clientSecret) {
+          status.textContent = 'Enter both a client ID and a client secret.';
+          return;
+        }
+        setBusy(true);
+        Homey.set(key, credentials, (error) => {
+          setBusy(false);
+          status.textContent = error
+            ? 'Homey could not save the credentials.'
+            : 'Credentials saved. Add a HomeLINK device in Homey to check access.';
+          if (!error) form.reset();
+        });
+      });
+
+      remove.addEventListener('click', () => {
+        setBusy(true);
+        Homey.unset(key, (error) => {
+          setBusy(false);
+          status.textContent = error ? 'Homey could not remove the credentials.' : 'Saved credentials removed.';
+          if (!error) form.reset();
+        });
+      });
+
+      Homey.ready();
+    }
+  </script>
+</body>
+</html>
