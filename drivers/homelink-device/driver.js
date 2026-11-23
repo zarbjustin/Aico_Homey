@@ -1,7 +1,7 @@
 'use strict';
 
 const Homey = require('homey');
-const { ALARM_KINDS } = require('../../lib/alarm-alerts');
+const { ALARM_KINDS } = require('../../lib/device-profiles');
 
 class HomeLinkDriver extends Homey.Driver {
   #maintenanceReported;

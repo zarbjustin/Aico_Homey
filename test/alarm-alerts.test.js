@@ -2,7 +2,8 @@
 
 const assert = require('node:assert/strict');
 const { test } = require('node:test');
-const { activeAlarmsByDevice, alarmKindsForModel } = require('../lib/alarm-alerts');
+const { activeAlarmsByDevice } = require('../lib/alarm-alerts');
+const { profileFor } = require('../lib/device-profiles');
 const { deviceId } = require('../lib/identity');
 
 const HOME = 'SYNTHETIC-HOME';
@@ -49,9 +50,9 @@ test('rejects ambiguous codes, inconsistent identities and mixed duplicates', ()
 });
 
 test('checks product capability before routing cloud alarm reports', () => {
-  assert.deepEqual(alarmKindsForModel('Ei3030'), ['fire', 'co']);
-  assert.deepEqual(alarmKindsForModel('Ei3028'), ['fire', 'co']);
-  assert.deepEqual(alarmKindsForModel('Ei3016'), ['fire']);
-  assert.deepEqual(alarmKindsForModel('Ei1000G'), []);
-  assert.deepEqual(alarmKindsForModel('Ei208WRF'), []);
+  assert.deepEqual(profileFor('Ei3030').alarms, ['fire', 'co']);
+  assert.deepEqual(profileFor('Ei3028').alarms, ['fire', 'co']);
+  assert.deepEqual(profileFor('Ei3016').alarms, ['fire']);
+  assert.deepEqual(profileFor('Ei1000G').alarms, []);
+  assert.deepEqual(profileFor('Ei208WRF').alarms, []);
 });

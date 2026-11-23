@@ -8,13 +8,13 @@ The [Python reference](https://github.com/RogerSelwyn/python_homelink/tree/c6db5
 
 One client shares inventory requests across pairing and all device tiles. The app refreshes every minute while devices are paired. A successful snapshot can be reused for 20 seconds to absorb concurrent discovery. Rate limiting delays the next request using the server's retry interval or a one-minute fallback. On a failed read, Homey marks affected tiles unavailable and preserves their previous displayed timestamps. A cloud response can itself contain old device data. The vendor's data collection status describes the collection service and does not establish whether a radio device is online.
 
-| Model | Inventory scope |
-| --- | --- |
-| Ei1000G | Gateway inventory and vendor-reported fields |
-| Ei3014, Ei3016, Ei3028, Ei3030 | Alarm inventory and vendor-reported fields |
-| Ei450 | Accessory inventory and vendor-reported fields |
-| Ei3000MRF | Radio module fitted to a host alarm. A separate Homey tile requires evidence of a distinct inventory record. |
-| Ei208WRF | Pending evidence of its model ID, reported fields and event coverage. |
+## Account onboarding
+
+The two authenticated [Homey app API](https://apps.developer.homey.app/advanced/web-api) routes support the local app settings view. The connection check tests the entered key in a separate client. The saved connection route reports the health of the most recent inventory read and returns only aggregate counts and canonical model names. The client never returns a saved key to the settings page. The Homey settings manager writes the submitted key after its check succeeds.
+
+To repair access, verify and save a replacement key from the same HomeLINK account. Pairing rests on the same stable device IDs and leaves existing tiles and Flows in place. The app closes the previous session, resets its cached observations and rechecks its registered devices. Rejecting a candidate leaves the prior session in place.
+
+The [compatibility matrix](compatibility.md) states the available app features and evidence level per model group. A model known from the Aico catalogue can appear in diagnostics while pairing is pending verification.
 
 ## Maintenance alerts
 

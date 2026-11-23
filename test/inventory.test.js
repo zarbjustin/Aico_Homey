@@ -65,3 +65,20 @@ test('fails discovery for missing or duplicate supported-device identities', () 
   assert.throws(() => normalizeInventory([{ ...sample, serialNumber: '' }]), /without an identifier/);
   assert.throws(() => normalizeInventory([sample, { ...sample, serialNumber: 'synthetic-abc' }]), /duplicate/);
 });
+
+test('diagnostics expose canonical model names and counts without household identifiers', () => {
+  const { summarizeInventory } = require('../lib/inventory');
+  const property = { property: 'property/SYNTHETIC-PRIVATE-REFERENCE' };
+  const rows = [
+    { model: ' ei3030 ', serialNumber: 'SYNTHETIC-SERIAL', locationNickname: 'SYNTHETIC-PRIVATE-ROOM', _rel: property },
+    { model: 'EI208WRF', serialNumber: 'SYNTHETIC-CANDIDATE', _rel: property },
+    { model: 'SYNTHETIC-PRIVATE-UNKNOWN', serialNumber: 'SYNTHETIC-OTHER', _rel: property },
+    null,
+  ];
+  const summary = summarizeInventory(rows, normalizeInventory(rows));
+  assert.deepEqual(summary, {
+    records: 4, pairable: 1, linkedProperties: 1, unknown: 1, missingModel: 1,
+    models: [{ model: 'Ei208WRF', count: 1, pairable: false }, { model: 'Ei3030', count: 1, pairable: true }],
+  });
+  assert.doesNotMatch(JSON.stringify(summary), /SYNTHETIC/);
+});

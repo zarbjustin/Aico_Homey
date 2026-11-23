@@ -1,6 +1,6 @@
 {
   "id": "uk.co.zarb.aico",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "compatibility": ">=12.9.0",
   "sdk": 3,
   "runtime": "nodejs",
@@ -11,6 +11,10 @@
   "category": ["security"],
   "tags": { "en": ["Aico", "HomeLINK", "SmartLINK"] },
   "permissions": [],
+  "api": {
+    "getConnectionStatus": { "method": "GET", "path": "/connection", "public": false },
+    "checkConnection": { "method": "POST", "path": "/connection/check", "public": false }
+  },
   "author": { "name": "zarbjustin" },
   "source": "https://github.com/zarbjustin/Aico_Homey",
   "support": "https://github.com/zarbjustin/Aico_Homey/issues",

@@ -2,7 +2,7 @@
 
 An independent Homey Pro SDK 3 app that reads device inventory and maintenance information from the Aico HomeLINK cloud. The Ei1000G gateway sends data to HomeLINK, and Homey reads that data over HTTPS. Homey needs internet access and a HomeLINK Dashboard account that can create a **Web API access key with Standard scope**.
 
-**v0.4 is a development build.** The code can discover and pair an Ei1000G, Ei3014, Ei3016, Ei3028, Ei3030 or Ei450 when the model appears in the supported HomeLINK inventory. Each tile can show the reported operational and collection statuses, last seen, last tested and replacement dates, and when Homey retrieved the record. Missing or unrecognised fields show **Unknown**. A failed inventory refresh marks paired devices unavailable. Cloud snapshot retrieval and last device contact are separate timestamps.
+**v0.5 is a development build.** The code can discover and pair an Ei1000G, Ei3014, Ei3016, Ei3028, Ei3030 or Ei450 when the model appears in the supported HomeLINK inventory. Each tile can show the reported operational and collection statuses, last seen, last tested and replacement dates, and when Homey retrieved the record. Missing or unrecognised fields show **Unknown**. A failed inventory refresh marks paired devices unavailable. Cloud snapshot retrieval and last device contact are separate timestamps.
 
 Device tiles also show the count of active faults and maintenance alerts reported by HomeLINK. An incomplete, ambiguous or unavailable alert feed shows **Unknown** for maintenance while the app can still display inventory information. The maintenance retrieval timestamp is shown separately.
 
@@ -29,9 +29,11 @@ These checks run locally with synthetic test data and require no Homey or HomeLI
 ## First live verification
 
 1. Confirm that the gateway and enrolled devices appear in the HomeLINK Dashboard. Confirm that the account can create an access key with Web API type and Standard scope. Use a key limited to devices whose data this Homey is authorised to display.
-2. After installing the development build on an authorised Homey Pro, open the app settings and save the access key there.
+2. After installing the development build on an authorised Homey Pro, enter the key in app settings. Use **Test connection** to check access and **Verify and save credentials** to activate it. The settings page also shows the saved connection and a redacted inventory summary.
 3. In Homey, add an **Aico HomeLINK → HomeLINK device**. Compare the displayed models, dates and maintenance alerts with the portal. This first version supports single-page inventories.
 4. Use the procedure in [the development notes](docs/development.md) to record the results and outstanding gaps.
+
+For supported fields and models, see [compatibility](docs/compatibility.md). The [roadmap](docs/roadmap.md) tracks development and live verification separately.
 
 ## References
 

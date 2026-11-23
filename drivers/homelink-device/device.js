@@ -2,7 +2,7 @@
 
 const Homey = require('homey');
 const { AlertState, isFreshAlertSnapshot } = require('../../lib/alert-state');
-const { ALARM_KINDS, alarmKindsForModel } = require('../../lib/alarm-alerts');
+const { ALARM_KINDS, profileFor } = require('../../lib/device-profiles');
 
 const MAINTENANCE_CAPABILITIES = ['homelink_maintenance_alerts', 'homelink_maintenance_retrieved_at'];
 
@@ -100,7 +100,7 @@ class HomeLinkDevice extends Homey.Device {
     }
 
     const byKind = alerts.alarmsByDevice.get(record.id);
-    const kinds = alarmKindsForModel(record.model);
+    const kinds = profileFor(record.model)?.alarms ?? [];
     for (const kind of kinds) {
       if (!current() || this.homey.app.alarmPreviewSince !== enabledSince) return;
       const state = this.#alarmStates.get(kind);

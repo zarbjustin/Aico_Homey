@@ -224,3 +224,54 @@ test('pairs, migrates, dispatches gated Flow cards, and recovers without replayi
   assert.equal(available, false);
   await assert.rejects(driver.onPairListDevices(), /Add HomeLINK Web API credentials/);
 });
+
+test('connection checks reject a candidate without replacing saved access', async (t) => {
+  const api = require('../api');
+  const manifest = require('../.homeycompose/app.json');
+  const settings = new EventEmitter();
+  const saved = { clientId: 'saved-id', clientSecret: 'saved-secret' };
+  settings.get = (key) => key === 'homelink_web_api' ? saved : undefined;
+  settings.set = t.mock.fn();
+  const homey = { settings, setInterval: t.mock.fn(), clearInterval: t.mock.fn() };
+  const App = loadAdapter('../app', 'App', FakeHomeyObject);
+  const app = new App(homey);
+  homey.app = app;
+  assert.deepEqual(manifest.api.checkConnection, { method: 'POST', path: '/connection/check', public: false });
+  assert.deepEqual(manifest.api.getConnectionStatus, { method: 'GET', path: '/connection', public: false });
+  let now = 0;
+  t.mock.method(Date, 'now', () => now);
+  const fetch = t.mock.method(globalThis, 'fetch', async (url, options) => {
+    const parsed = new URL(url);
+    const clientId = parsed.searchParams.get('client');
+    if (clientId === 'rate-limit') {
+      return Response.json({}, { status: 429, headers: { 'Retry-After': '120' } });
+    }
+    if (clientId === 'bad-id') return Response.json({ error: 'SYNTHETIC-VENDOR-SECRET' }, { status: 403 });
+    if (clientId) return Response.json({ accessToken: clientId });
+    const model = options.headers.Authorization === 'Bearer saved-id' ? 'Ei3030' : 'Ei3028';
+    return Response.json({ results: [{ model, serialNumber: 'SYNTHETIC-PRIVATE-SERIAL' }] });
+  });
+  app.onInit();
+  t.after(() => app.onUninit());
+  assert.deepEqual(await api.getConnectionStatus({ homey }), { state: 'waiting' });
+
+  const candidate = (clientId) => api.checkConnection({ homey, body: { clientId, clientSecret: 'candidate-secret' } });
+  await assert.rejects(candidate('bad-id'), { message: 'HomeLINK denied access. Check the Web API credentials and scope.' });
+  const check = await candidate('candidate-id');
+  assert.deepEqual(check.summary.models, [{ model: 'Ei3028', count: 1, pairable: true }]);
+  assert.doesNotMatch(JSON.stringify(check), /candidate-secret|SYNTHETIC-PRIVATE-SERIAL/);
+  assert.deepEqual(await api.getConnectionStatus({ homey }), { state: 'waiting' });
+  assert.equal(settings.set.mock.callCount(), 0);
+
+  await assert.rejects(candidate('rate-limit'), /rate limited/);
+  const attempts = fetch.mock.callCount();
+  now += 119_999;
+  await assert.rejects(candidate('candidate-id'), /rate limited/);
+  assert.equal(fetch.mock.callCount(), attempts);
+  now += 1;
+  const savedInventory = await app.discover();
+  assert.deepEqual([...savedInventory.devices.values()].map((row) => row.model), ['Ei3030']);
+  assert.equal((await api.getConnectionStatus({ homey })).state, 'available');
+  now += 180_001;
+  assert.deepEqual(await api.getConnectionStatus({ homey }), { state: 'stale', fetchedAt: 120_000 });
+});
