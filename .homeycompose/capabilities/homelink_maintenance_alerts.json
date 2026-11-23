@@ -1,0 +1,9 @@
+{
+  "type": "string",
+  "title": {
+    "en": "Reported faults and maintenance"
+  },
+  "getable": true,
+  "setable": false,
+  "uiComponent": "sensor"
+}

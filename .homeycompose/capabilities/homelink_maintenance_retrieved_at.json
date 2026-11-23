@@ -1,0 +1,9 @@
+{
+  "type": "string",
+  "title": {
+    "en": "Maintenance retrieved from HomeLINK (UTC)"
+  },
+  "getable": true,
+  "setable": false,
+  "uiComponent": "sensor"
+}

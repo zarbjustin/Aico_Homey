@@ -20,18 +20,36 @@ class FakeHomeyObject {
   constructor(homey) { this.homey = homey; }
 }
 
-test('pairs, refreshes and marks a paired tile unavailable when credentials are removed', async (t) => {
+test('pairs, migrates an existing tile and isolates maintenance failures from inventory', async (t) => {
   const settings = new EventEmitter();
   let credentials = { clientId: 'test-id', clientSecret: 'test-secret' };
+  let now = 10_000;
+  let alertsAvailable = true;
   settings.get = () => credentials;
+  t.mock.method(Date, 'now', () => now);
   t.mock.method(globalThis, 'fetch', async (url) => {
-    if (new URL(url).hostname === 'auth.live.homelync.io') {
+    const { hostname, pathname } = new URL(url);
+    if (hostname === 'auth.live.homelync.io') {
       return Response.json({ accessToken: 'synthetic' });
+    }
+    if (pathname === '/v1/property/SYNTHETIC-HOME/alerts') {
+      if (!alertsAvailable) return Response.json({}, { status: 503 });
+      return Response.json({ count: 1, results: [{
+        id: 'synthetic-event',
+        type: 'DEVICE',
+        status: 'ACTIVE',
+        category: 'PRIORITY_MAINTENANCE',
+        eventType: 'HEAD_REMOVED',
+        serialNumber: 'SYNTHETIC-ADAPTER',
+        propertyReference: 'SYNTHETIC-HOME',
+        _rel: { device: 'device/SYNTHETIC-ADAPTER', property: 'property/SYNTHETIC-HOME' },
+      }] });
     }
     return Response.json({ results: [{
       model: 'Ei3030',
       serialNumber: 'SYNTHETIC-ADAPTER',
       status: { operationalStatus: 'GOOD' },
+      _rel: { property: 'property/SYNTHETIC-HOME' },
     }] });
   });
 
@@ -51,10 +69,13 @@ test('pairs, refreshes and marks a paired tile unavailable when credentials are 
   const events = new EventEmitter();
   const capabilities = new Map();
   let available = false;
+  const existingCapabilities = new Set(['homelink_maintenance_alerts']);
+  device.hasCapability = (id) => existingCapabilities.has(id);
+  device.addCapability = t.mock.fn(async (id) => { existingCapabilities.add(id); });
   device.getData = () => pair.data;
   device.getAvailable = () => available;
   device.getCapabilityValue = (id) => capabilities.get(id);
-  device.setCapabilityValue = async (id, value) => { capabilities.set(id, value); };
+  device.setCapabilityValue = async (id, value) => { capabilities.set(id, value); events.emit(id, value); };
   device.setAvailable = async () => { available = true; events.emit('available'); };
   device.setUnavailable = async (message) => { available = false; events.emit('unavailable', message); };
 
@@ -64,7 +85,20 @@ test('pairs, refreshes and marks a paired tile unavailable when credentials are 
   assert.equal(capabilities.get('homelink_operational_status'), 'Good');
   assert.equal(capabilities.get('homelink_last_seen'), 'Unknown');
   assert.match(capabilities.get('homelink_retrieved_at'), /Z$/);
-  assert.equal(globalThis.fetch.mock.callCount(), 2);
+  assert.equal(capabilities.get('homelink_maintenance_alerts'), '1 active');
+  assert.equal(device.addCapability.mock.callCount(), 1);
+  assert.equal(device.addCapability.mock.calls[0].arguments[0], 'homelink_maintenance_retrieved_at');
+  assert.equal(globalThis.fetch.mock.callCount(), 3);
+
+  const missingAlerts = once(events, 'homelink_maintenance_retrieved_at');
+  now += 300_000;
+  alertsAvailable = false;
+  const [poll] = homey.setInterval.mock.calls[0].arguments;
+  poll();
+  assert.equal((await missingAlerts)[0], 'Unknown');
+  assert.equal(capabilities.get('homelink_maintenance_alerts'), 'Unknown');
+  assert.equal(capabilities.get('homelink_operational_status'), 'Good');
+  assert.equal(available, true);
 
   const unavailable = once(events, 'unavailable');
   credentials = undefined;
