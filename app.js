@@ -6,6 +6,7 @@ const { normalizeInventory } = require('./lib/inventory');
 
 const CREDENTIALS_KEY = 'homelink_web_api';
 const POLL_MS = 60_000;
+const MAX_CONCURRENT_PROPERTIES = 4;
 
 class HomeLinkApp extends Homey.App {
   #client;
@@ -73,6 +74,19 @@ class HomeLinkApp extends Homey.App {
     });
   }
 
+  async #readMaintenance(client, references) {
+    const maintenance = new Map();
+    for (let index = 0; index < references.length; index += MAX_CONCURRENT_PROPERTIES) {
+      if (this.#stopped || client !== this.#client) break;
+      const batch = references.slice(index, index + MAX_CONCURRENT_PROPERTIES);
+      await Promise.allSettled(batch.map(async (reference) => {
+        const snapshot = await client.getPropertyMaintenance(reference);
+        maintenance.set(reference, snapshot);
+      }));
+    }
+    return maintenance;
+  }
+
   async #syncDevices() {
     const client = this.#client;
     let snapshot;
@@ -83,7 +97,14 @@ class HomeLinkApp extends Homey.App {
       message = error.message;
     }
     if (this.#stopped || client !== this.#client) return;
-    await Promise.allSettled(Array.from(this.#devices, async (device) => {
+    const devices = Array.from(this.#devices, (device) => {
+      const { id, model } = device.getData();
+      const record = snapshot?.devices.get(id);
+      return { device, record: record?.model === model ? record : undefined };
+    });
+    const references = Array.from(new Set(devices.map(({ record }) => record?.propertyReference).filter(Boolean)));
+    const maintenance = await this.#readMaintenance(client, references);
+    await Promise.allSettled(devices.map(async ({ device, record }) => {
       const current = () => !this.#stopped && client === this.#client && this.#devices.has(device);
       if (!current()) return;
       try {
@@ -91,13 +112,12 @@ class HomeLinkApp extends Homey.App {
           await device.setUnavailable(message);
           return;
         }
-        const data = device.getData();
-        const record = snapshot.devices.get(data.id);
-        if (!record || record.model !== data.model) {
+        if (!record) {
           await device.setUnavailable('This device is missing from the current HomeLINK inventory.');
           return;
         }
-        await device.applyInventory(record, snapshot.fetchedAt, current);
+        const alerts = maintenance.get(record.propertyReference);
+        await device.applyInventory(record, snapshot.fetchedAt, alerts, current);
       } catch {
         if (current()) await device.setUnavailable('Homey could not display the HomeLINK data.');
       }

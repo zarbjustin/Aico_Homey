@@ -14,7 +14,9 @@
     "homelink_last_seen",
     "homelink_last_tested",
     "homelink_replace_by",
-    "homelink_retrieved_at"
+    "homelink_retrieved_at",
+    "homelink_maintenance_alerts",
+    "homelink_maintenance_retrieved_at"
   ],
   "pair": [
     { "id": "list_devices", "template": "list_devices", "navigation": { "next": "add_devices" } },

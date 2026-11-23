@@ -1,14 +1,14 @@
 {
   "name": "uk.co.zarb.aico",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
-  "description": "Read-only Aico HomeLINK inventory for Homey Pro",
+  "description": "Read-only Aico HomeLINK device monitoring for Homey Pro",
   "license": "MIT",
   "engines": {
     "node": ">=22"
   },
   "scripts": {
-    "check": "node --check app.js && node --check lib/homelink-client.js && node --check lib/inventory.js && node --check drivers/homelink-device/driver.js && node --check drivers/homelink-device/device.js",
+    "check": "node --check app.js && node --check lib/homelink-client.js && node --check lib/inventory.js && node --check lib/identity.js && node --check lib/maintenance.js && node --check drivers/homelink-device/driver.js && node --check drivers/homelink-device/device.js",
     "test": "node --test"
   }
 }

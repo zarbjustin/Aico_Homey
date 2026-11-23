@@ -114,8 +114,65 @@ test('cancels in-flight work when the credentials change', async () => {
     },
   });
   const pending = client.getInventory();
+  await Promise.resolve();
   client.close();
   assert.equal(signal.aborted, true);
   await assert.rejects(pending, { message: 'HomeLINK could not be reached.' });
   await assert.rejects(client.getInventory(), /credentials changed/);
+});
+
+test('shares one bearer token and one fresh alert snapshot per property', async () => {
+  let now = 0;
+  const empty = { count: 0, results: [] };
+  const { client, calls } = clientFor([
+    { body: token }, { body: inventory }, { body: empty }, { body: empty }, { body: empty },
+  ], () => now);
+  const [, first, second, other] = await Promise.all([
+    client.getInventory(),
+    client.getPropertyMaintenance('SYNTHETIC-A'),
+    client.getPropertyMaintenance('SYNTHETIC-A'),
+    client.getPropertyMaintenance('SYNTHETIC-B'),
+  ]);
+  assert.equal(first, second);
+  assert.notEqual(first, other);
+  assert.equal(first.counts.size, 0);
+  assert.deepEqual(calls.map(({ url }) => url.pathname), [
+    '/oauth2', '/v1/device', '/v1/property/SYNTHETIC-A/alerts', '/v1/property/SYNTHETIC-B/alerts',
+  ]);
+  now = 299_999;
+  assert.equal(await client.getPropertyMaintenance('SYNTHETIC-A'), first);
+  now = 300_000;
+  assert.equal((await client.getPropertyMaintenance('SYNTHETIC-A')).fetchedAt, now);
+  assert.equal(calls.length, 5);
+});
+
+test('rejects unsafe property references and partial alert replies', async () => {
+  const { client, calls } = clientFor([
+    { body: token },
+    { body: { count: 1, results: [] } },
+    { body: { totalPages: 2, results: [] } },
+    { body: { count: 0, results: [] } },
+  ]);
+  for (const bad of ['..', '../device', 'https://example.com', 'x%2Fy']) {
+    await assert.rejects(client.getPropertyMaintenance(bad), /invalid property reference/);
+  }
+  assert.equal(calls.length, 0);
+  await assert.rejects(client.getPropertyMaintenance('SYNTHETIC-A'), /incomplete property alert/);
+  await assert.rejects(client.getPropertyMaintenance('SYNTHETIC-A'), /incomplete property alert/);
+  assert.equal((await client.getPropertyMaintenance('SYNTHETIC-A')).counts.size, 0);
+});
+
+test('renews only once when inventory and property requests both reject the same token', async () => {
+  const calls = [];
+  let authCount = 0;
+  const fetch = async (url, options) => {
+    calls.push(new URL(url).pathname);
+    if (calls.at(-1) === '/oauth2') return Response.json({ accessToken: String(++authCount) });
+    if (options.headers.Authorization === 'Bearer 1') return Response.json({}, { status: 401 });
+    return Response.json({ results: [] });
+  };
+  const client = new HomeLinkClient(credentials, { fetch });
+  await Promise.all([client.getInventory(), client.getPropertyMaintenance('SYNTHETIC-A')]);
+  assert.equal(authCount, 2);
+  assert.equal(calls.length, 6);
 });
