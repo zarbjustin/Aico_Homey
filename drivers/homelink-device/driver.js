@@ -2,6 +2,7 @@
 
 const Homey = require('homey');
 const { ALARM_KINDS } = require('../../lib/device-profiles');
+const { replacementDueWithin, lastTestAtLeast } = require('../../lib/service-dates');
 
 class HomeLinkDriver extends Homey.Driver {
   #maintenanceReported;
@@ -18,6 +19,18 @@ class HomeLinkDriver extends Homey.Driver {
       .registerRunListener(async ({ device }) => device.hasActiveMaintenance());
     this.homey.flow.getConditionCard('homelink_maintenance_data_available')
       .registerRunListener(async ({ device }) => device.hasFreshMaintenance());
+    this.homey.flow.getConditionCard('homelink_replacement_due')
+      .registerRunListener(async ({ device, days }) => {
+        const now = Date.now();
+        const { replaceBy } = device.getServiceDates(now);
+        return replacementDueWithin(replaceBy, days, now, this.homey.clock.getTimezone());
+      });
+    this.homey.flow.getConditionCard('homelink_test_reminder')
+      .registerRunListener(async ({ device, days }) => {
+        const now = Date.now();
+        const { lastTested } = device.getServiceDates(now);
+        return lastTestAtLeast(lastTested, days, now, this.homey.clock.getTimezone());
+      });
   }
 
   triggerMaintenanceChange(device, change) {

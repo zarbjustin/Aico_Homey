@@ -135,6 +135,24 @@
       "hint": {
         "en": "Checks whether Homey has a valid, recent maintenance snapshot for this device."
       }
+    },
+    {
+      "id": "homelink_replacement_due",
+      "title": { "en": "Replacement !{{is|isn't}} due within a number of days" },
+      "titleFormatted": { "en": "Replacement !{{is|isn't}} due within [[days]] days" },
+      "hint": { "en": "Includes overdue devices and uses the replacement date reported by HomeLINK. A missing or stale date stops the Flow." },
+      "args": [
+        { "name": "days", "type": "number", "title": { "en": "Days" }, "placeholder": { "en": "Days" }, "min": 0, "step": 1 }
+      ]
+    },
+    {
+      "id": "homelink_test_reminder",
+      "title": { "en": "The last test !{{was|wasn't}} at least a number of days ago" },
+      "titleFormatted": { "en": "The last test !{{was|wasn't}} at least [[days]] days ago" },
+      "hint": { "en": "Uses Homey's local calendar and the last-test date reported by HomeLINK. A missing or stale date stops the Flow." },
+      "args": [
+        { "name": "days", "type": "number", "title": { "en": "Days" }, "placeholder": { "en": "Days" }, "min": 1, "step": 1 }
+      ]
     }
   ]
 }
