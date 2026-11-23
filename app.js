@@ -39,6 +39,7 @@ class HomeLinkApp extends Homey.App {
     const credentials = readCredentials(this.homey.settings.get(CREDENTIALS_KEY));
     this.#client?.close();
     this.#client = credentials ? new HomeLinkClient(credentials) : undefined;
+    for (const device of this.#devices) device.invalidateMaintenance();
     this.#requestSync();
   }
 
@@ -109,17 +110,22 @@ class HomeLinkApp extends Homey.App {
       if (!current()) return;
       try {
         if (!snapshot) {
+          device.invalidateMaintenance();
           await device.setUnavailable(message);
           return;
         }
         if (!record) {
+          device.invalidateMaintenance();
           await device.setUnavailable('This device is missing from the current HomeLINK inventory.');
           return;
         }
         const alerts = maintenance.get(record.propertyReference);
         await device.applyInventory(record, snapshot.fetchedAt, alerts, current);
       } catch {
-        if (current()) await device.setUnavailable('Homey could not display the HomeLINK data.');
+        if (current()) {
+          device.invalidateMaintenance();
+          await device.setUnavailable('Homey could not display the HomeLINK data.');
+        }
       }
     }));
   }
