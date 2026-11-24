@@ -11,18 +11,25 @@ test('settings tests and saves exact credentials, and leaves a saved key alone o
   const nodes = new Map(ids.map((id) => [id, {
     events: {},
     addEventListener(name, call) { this.events[name] = call; },
-    reset() { nodes.get('client-id').value = ''; nodes.get('client-secret').value = ''; },
+    reset() {
+      const prefix = id === 'mqtt-credentials' ? 'mqtt-' : '';
+      const fields = prefix ? ['client-id', 'username', 'password', 'topic-root'] : ['client-id', 'client-secret'];
+      for (const field of fields) nodes.get(prefix + field).value = '';
+    },
   }]));
   const context = { document: { getElementById: (id) => nodes.get(id) } };
   vm.runInNewContext(html.match(/<script>([\s\S]*?)<\/script>/)[1], context);
   let rejectCheck = true;
   const writes = [];
+  const removals = [];
   const checks = [];
   const homey = {
     ready() {},
     get(key, cb) { cb(null, false); },
     set(key, value, cb) { writes.push([key, { ...value }]); cb(); },
+    unset(key, cb) { removals.push(key); cb(); },
     api(method, path, body, cb) {
+      if (method === 'GET' && path === '/events') return cb(null, { state: 'waiting' });
       if (method === 'GET') return cb(null, { state: 'waiting' });
       assert.equal(path, '/connection/check');
       checks.push({ ...body });
@@ -44,4 +51,20 @@ test('settings tests and saves exact credentials, and leaves a saved key alone o
   assert.deepEqual(writes, [['homelink_web_api', { clientId: 'entered-id', clientSecret: 'entered-secret' }]]);
   assert.ok(checks.every((key) => key.clientId === 'entered-id' && key.clientSecret === 'entered-secret'));
   assert.equal(nodes.get('client-secret').value, '');
+
+  assert.match(nodes.get('mqtt-status').textContent, /MQTT key saved/);
+  for (const [field, value] of [
+    ['client-id', ' client '], ['username', ' user '], ['password', ' verbatim-password '], ['topic-root', 'account/+'],
+  ]) nodes.get('mqtt-' + field).value = value;
+  const saveMqtt = () => nodes.get('mqtt-credentials').events.submit({ preventDefault() {} });
+  saveMqtt();
+  assert.equal(writes.length, 1);
+  nodes.get('mqtt-topic-root').value = 'account/#';
+  saveMqtt();
+  assert.deepEqual(writes[1], ['homelink_mqtt', {
+    clientId: 'client', username: 'user', password: ' verbatim-password ', topicRoot: 'account',
+  }]);
+  assert.equal(nodes.get('mqtt-password').value, '');
+  nodes.get('mqtt-remove').events.click();
+  assert.deepEqual(removals, ['homelink_mqtt']);
 });
