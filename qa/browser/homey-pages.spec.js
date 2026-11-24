@@ -11,7 +11,7 @@ const overview = {
 const service = {
   alarms: 3, replacement: { days: 30, checked: 2, due: 0 }, lastTest: { days: 14, checked: 0, due: 0 },
 };
-const exampleReport = 'Aico HomeLINK support report\nApp version 0.12.0\nWeb API inventory — Available';
+const exampleReport = 'Aico HomeLINK support report\nApp version 0.13.0\nWeb API inventory — Available';
 
 async function openHomeyPage(page, folder, fixture) {
   const routes = new Map([['/index.html', 'text/html']]);
@@ -65,7 +65,7 @@ async function openHomeyPage(page, folder, fixture) {
         }
         if (url === '/events') return callback(null, { state: state.saved.homelink_mqtt ? 'waiting' : 'disabled' });
         if (url === '/diagnostics') return state.fail ? callback(new Error('Unexpected fixture error')) : callback(null, { report: response });
-        if (state.inventoryUnavailable) return callback(null, { state: 'unavailable' });
+        if (state.inventoryState) return callback(null, { state: state.inventoryState });
         return state.saved.homelink_web_api
           ? callback(null, { state: 'available', fetchedAt: Date.now(), summary })
           : callback(null, { state: 'unconfigured' });
@@ -162,8 +162,9 @@ test.describe('Settings', () => {
     await expect(tested.locator('.model-evidence')).toHaveText('');
     await expect(saved).toBeVisible();
 
-    await page.evaluate(() => { window.qa.inventoryUnavailable = true; });
+    await page.evaluate(() => { window.qa.inventoryState = 'incomplete'; });
     await page.getByRole('button', { name: 'Refresh saved status' }).click();
+    await expect(page.locator('#connection-state')).toHaveText(/HomeLINK returned an incomplete device list/);
     await expect(saved).toBeHidden();
     await expect(saved.locator('.model-evidence')).toHaveText('');
   });

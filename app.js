@@ -1,7 +1,7 @@
 'use strict';
 
 const Homey = require('homey');
-const { HomeLinkClient, readCredentials } = require('./lib/homelink-client');
+const { HomeLinkClient, IncompleteInventoryError, readCredentials } = require('./lib/homelink-client');
 const { normalizeInventory, summarizeInventory } = require('./lib/inventory');
 const { HomeLinkMqtt, readMqttCredentials } = require('./lib/homelink-mqtt');
 const { createSupportReport } = require('./lib/support-report');
@@ -165,7 +165,7 @@ class HomeLinkApp extends Homey.App {
     const status = this.#inventoryStatus;
     if (!this.#client) return { state: 'unconfigured' };
     if (!status) return { state: 'waiting' };
-    if (status.state === 'unavailable') return status;
+    if (status.state !== 'available') return status;
 
     const age = now - status.fetchedAt;
     if (age < 0 || age > 3 * POLL_MS) return { state: 'stale', fetchedAt: status.fetchedAt };
@@ -183,7 +183,9 @@ class HomeLinkApp extends Homey.App {
       this.#lastRead.inventory = fetchedAt;
       return { devices, fetchedAt };
     } catch (error) {
-      if (client === this.#client && !this.#stopped) this.#inventoryStatus = { state: 'unavailable' };
+      if (client === this.#client && !this.#stopped) {
+        this.#inventoryStatus = { state: error instanceof IncompleteInventoryError ? 'incomplete' : 'unavailable' };
+      }
       throw error;
     }
   }

@@ -29,5 +29,6 @@ jobs:
       - run: npm run test:browser
       - run: npx --yes homey@4.5.3 app build
       - run: git diff --exit-code -- app.json
-      - run: npm run check:package
+      - name: Verify and record the Homey package
+        run: npm run check:package
       - run: npx --yes homey@4.5.3 app validate --level publish

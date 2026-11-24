@@ -162,6 +162,7 @@
             available: 'Saved key is reading inventory. Latest update at ' + new Date(result.fetchedAt).toLocaleString() + '.',
             stale: 'The saved key has no recent inventory update.',
             unavailable: 'The last inventory update failed. Check or replace the Web API key if HomeLINK denied access.',
+            incomplete: 'HomeLINK returned an incomplete device list. Pairing requires a complete single-page inventory.',
           };
           connectionState.textContent = labels[result.state] || 'Connection status is unknown.';
         });
