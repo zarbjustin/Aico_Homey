@@ -34,6 +34,34 @@
     <p id="saved-inventory"></p>
     <button class="homey-button-secondary-full" type="button" id="refresh-status">Refresh saved status</button>
   </section>
+  <form id="mqtt-credentials">
+    <fieldset class="homey-form-fieldset">
+      <legend class="homey-form-legend">MQTT event updates</legend>
+      <p>Optional. Enter a separate MQTT key from the HomeLINK Dashboard. Incoming updates prompt Homey to check the Web API sooner.</p>
+      <div class="homey-form-group">
+        <label class="homey-form-label" for="mqtt-client-id">MQTT client ID</label>
+        <input class="homey-form-input" id="mqtt-client-id" autocomplete="off" spellcheck="false" required>
+      </div>
+      <div class="homey-form-group">
+        <label class="homey-form-label" for="mqtt-username">MQTT username</label>
+        <input class="homey-form-input" id="mqtt-username" autocomplete="off" spellcheck="false" required>
+      </div>
+      <div class="homey-form-group">
+        <label class="homey-form-label" for="mqtt-password">MQTT password</label>
+        <input class="homey-form-input" id="mqtt-password" type="password" autocomplete="new-password" required>
+      </div>
+      <div class="homey-form-group">
+        <label class="homey-form-label" for="mqtt-topic-root">Account topic root</label>
+        <input class="homey-form-input" id="mqtt-topic-root" autocomplete="off" spellcheck="false" aria-describedby="mqtt-topic-hint" required>
+        <p id="mqtt-topic-hint">Use the first segment of the topic in your HomeLINK MQTT export.</p>
+      </div>
+    </fieldset>
+    <button class="homey-button-primary-full" type="submit" id="mqtt-save">Save MQTT credentials</button>
+    <button class="homey-button-secondary-full" type="button" id="mqtt-remove">Remove MQTT credentials</button>
+    <button class="homey-button-secondary-full" type="button" id="mqtt-refresh">Refresh MQTT status</button>
+    <p id="mqtt-feedback" role="status"></p>
+    <p id="mqtt-status" role="status"></p>
+  </form>
   <form id="alarm-preview-form">
     <fieldset class="homey-form-fieldset" aria-describedby="alarm-preview-hint">
       <legend class="homey-form-legend">Alarm Flow preview</legend>
@@ -177,7 +205,75 @@
         });
       });
 
+      setupMqttSettings(Homey);
       Homey.ready();
+    }
+
+    function setupMqttSettings(Homey) {
+      const key = 'homelink_mqtt';
+      const get = (id) => document.getElementById('mqtt-' + id);
+      const form = get('credentials');
+      const feedback = get('feedback');
+      const status = get('status');
+      const save = get('save');
+      const remove = get('remove');
+      const fields = ['client-id', 'username', 'password', 'topic-root'].map(get);
+      let statusRequest = 0;
+
+      function refresh() {
+        const request = ++statusRequest;
+        Homey.api('GET', '/events', {}, (error, result) => {
+          if (request !== statusRequest) return;
+          const labels = {
+            disabled: 'MQTT updates are disabled. Web API polling is available.',
+            waiting: 'MQTT key saved. Add a Web API key and pair a HomeLINK device to start.',
+            connecting: 'Connecting to HomeLINK MQTT.',
+            listening: 'Listening for HomeLINK updates.',
+            reconnecting: 'Reconnecting to HomeLINK MQTT. Web API polling continues.',
+            unavailable: 'MQTT is unavailable. Check the MQTT key and topic. Web API polling continues.',
+          };
+          status.textContent = error ? 'Homey could not load MQTT status.'
+            : labels[result?.state] || 'MQTT status is unknown.';
+        });
+      }
+
+      function setBusy(busy) {
+        save.disabled = busy;
+        remove.disabled = busy;
+        for (const field of fields) field.readOnly = busy;
+      }
+
+      form.addEventListener('submit', (event) => {
+        event.preventDefault();
+        const [clientId, username, password, topic] = fields.map((field) => field.value);
+        const topicRoot = topic.trim().replace(/\/#$/, '');
+        if (!clientId.trim() || !username.trim() || !password.trim() || !/^[A-Za-z0-9_.-]{1,128}$/.test(topicRoot)) {
+          feedback.textContent = 'Enter the client ID, username, password and account topic root from the MQTT export.';
+          return;
+        }
+        setBusy(true);
+        Homey.set(key, { clientId: clientId.trim(), username: username.trim(), password, topicRoot }, (error) => {
+          setBusy(false);
+          feedback.textContent = error ? 'Homey could not save the MQTT key.' : 'MQTT key saved.';
+          if (!error) {
+            form.reset();
+            refresh();
+          }
+        });
+      });
+      remove.addEventListener('click', () => {
+        setBusy(true);
+        Homey.unset(key, (error) => {
+          setBusy(false);
+          feedback.textContent = error ? 'Homey could not remove the MQTT key.' : 'MQTT key removed.';
+          if (!error) {
+            form.reset();
+            refresh();
+          }
+        });
+      });
+      get('refresh').addEventListener('click', refresh);
+      refresh();
     }
   </script>
 </body>

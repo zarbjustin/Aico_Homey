@@ -1,6 +1,6 @@
 {
   "id": "uk.co.zarb.aico",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "compatibility": ">=12.9.0",
   "sdk": 3,
   "runtime": "nodejs",
@@ -13,7 +13,8 @@
   "permissions": [],
   "api": {
     "getConnectionStatus": { "method": "GET", "path": "/connection", "public": false },
-    "checkConnection": { "method": "POST", "path": "/connection/check", "public": false }
+    "checkConnection": { "method": "POST", "path": "/connection/check", "public": false },
+    "getEventStatus": { "method": "GET", "path": "/events", "public": false }
   },
   "author": { "name": "zarbjustin" },
   "source": "https://github.com/zarbjustin/Aico_Homey",

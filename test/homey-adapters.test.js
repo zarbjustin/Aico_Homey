@@ -7,19 +7,136 @@ const { createRequire } = require('node:module');
 const { test } = require('node:test');
 const vm = require('node:vm');
 const flowManifest = require('../drivers/homelink-device/driver.flow.compose.json');
+const { HomeLinkMqtt, readMqttCredentials } = require('../lib/homelink-mqtt');
+const { deviceId } = require('../lib/identity');
 
-function loadAdapter(path, baseClass, constructor) {
+function loadAdapter(path, baseClass, constructor, modules = {}) {
   const filename = require.resolve(path);
   const localRequire = createRequire(filename);
   const module = { exports: {} };
   const load = vm.runInThisContext('(function (require, module) {\n' + fs.readFileSync(filename, 'utf8') + '\n})', { filename });
-  load((name) => name === 'homey' ? { [baseClass]: constructor } : localRequire(name), module);
+  load((name) => name === 'homey' ? { [baseClass]: constructor } : modules[name] ?? localRequire(name), module);
   return module.exports;
 }
 
 class FakeHomeyObject {
   constructor(homey) { this.homey = homey; }
 }
+
+test('coalesces MQTT hints into REST refreshes and keeps polling after removal and rate limiting', { timeout: 5000 }, async (t) => {
+  const webKey = { clientId: 'synthetic', clientSecret: 'synthetic' };
+  let mqttKey = { clientId: 'synthetic', username: 'synthetic', password: 'synthetic', topicRoot: 'synthetic' };
+  let broker;
+  const connect = t.mock.fn(() => {
+    broker = new EventEmitter();
+    broker.end = t.mock.fn();
+    broker.subscribe = (topics, options, callback) => callback(null, topics.map((topic) => ({ topic, qos: options.qos })));
+    return broker;
+  });
+  class LocalMqtt extends HomeLinkMqtt {
+    constructor(key, onHint) { super(key, onHint, connect); }
+  }
+  const App = loadAdapter('../app', 'App', FakeHomeyObject, {
+    './lib/homelink-mqtt': { HomeLinkMqtt: LocalMqtt, readMqttCredentials },
+  });
+  const settings = new EventEmitter();
+  settings.get = (key) => ({ homelink_web_api: webKey, homelink_mqtt: mqttKey })[key];
+  const timers = new Map();
+  const homey = {
+    settings, setInterval: t.mock.fn(), clearInterval: t.mock.fn(),
+    setTimeout(callback, delay) {
+      const timer = Symbol();
+      timers.set(timer, { callback, delay });
+      return timer;
+    },
+    clearTimeout(timer) { timers.delete(timer); },
+  };
+  let now = 10_000;
+  t.mock.method(Date, 'now', () => now);
+  function runTimer(delay) {
+    assert.equal(timers.size, 1);
+    const [[id, timer]] = timers;
+    assert.equal(timer.delay, delay);
+    timers.delete(id);
+    now += delay;
+    timer.callback();
+  }
+  let reads = 0;
+  let alerts = 0;
+  let limit = false;
+  const serial = 'SYNTHETIC-MQTT-DEVICE';
+  t.mock.method(globalThis, 'fetch', async (url) => {
+    const { pathname } = new URL(url);
+    if (pathname === '/oauth2') return Response.json({ accessToken: 'synthetic' });
+    if (pathname.endsWith('/alerts')) {
+      alerts += 1;
+      return Response.json({ results: [] });
+    }
+    reads += 1;
+    if (limit) return new Response(null, { status: 429, headers: { 'Retry-After': '60' } });
+    return Response.json({ results: [{ model: 'Ei3030', serialNumber: serial, _rel: { property: 'property/SYNTHETIC-HOME' } }] });
+  });
+  const app = new App(homey);
+  app.onInit();
+  t.after(() => app.onUninit());
+  assert.deepEqual(app.getEventStatus(), { state: 'waiting' });
+  assert.equal(connect.mock.callCount(), 0);
+
+  const samples = new EventEmitter();
+  const device = {
+    getData: () => ({ id: deviceId(serial), model: 'Ei3030' }),
+    invalidateObservations() {},
+    async setUnavailable() { samples.emit('unavailable'); },
+    async applyInventory(_record, _fetchedAt, maintenance) { samples.emit('sample', maintenance); },
+  };
+  const settle = () => new Promise(setImmediate);
+  let applied = once(samples, 'sample');
+  app.addDevice(device);
+  await applied;
+  await settle();
+  assert.equal(reads, 1);
+  assert.equal(alerts, 1);
+  broker.emit('connect');
+  assert.deepEqual(app.getEventStatus(), { state: 'listening' });
+  const hint = () => broker.emit('message', 'synthetic/alert/active/anything', Buffer.from('{"eventTypeId":"CO_ALARM"}'));
+  hint();
+  hint();
+  applied = once(samples, 'sample');
+  runTimer(2000);
+  assert.deepEqual((await applied)[0].alarmsByDevice, new Map());
+  await settle();
+  assert.equal(reads, 2);
+  assert.equal(alerts, 2);
+
+  limit = true;
+  hint();
+  hint();
+  const unavailable = once(samples, 'unavailable');
+  runTimer(30_000);
+  await unavailable;
+  await settle();
+  assert.equal(reads, 3);
+  assert.equal(alerts, 2);
+  hint();
+  assert.equal([...timers.values()][0].delay, 60_000);
+  limit = false;
+
+  mqttKey = undefined;
+  settings.emit('unset', 'homelink_mqtt');
+  assert.equal(timers.size, 0);
+  assert.equal(broker.end.mock.callCount(), 1);
+  assert.deepEqual(app.getEventStatus(), { state: 'disabled' });
+  hint();
+  assert.equal(timers.size, 0);
+
+  now += 60_000;
+  applied = once(samples, 'sample');
+  const [poll] = homey.setInterval.mock.calls[0].arguments;
+  poll();
+  await applied;
+  assert.equal(reads, 4);
+  assert.equal(alerts, 2);
+});
 
 test('pairs, migrates, dispatches gated Flow cards, and recovers without replaying', { timeout: 5000 }, async (t) => {
   const settings = new EventEmitter();

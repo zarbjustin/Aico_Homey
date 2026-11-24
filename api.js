@@ -7,4 +7,7 @@ module.exports = {
   async checkConnection({ homey, body }) {
     return homey.app.checkConnection(body);
   },
+  async getEventStatus({ homey }) {
+    return homey.app.getEventStatus();
+  },
 };

@@ -1,6 +1,6 @@
 {
   "name": "uk.co.zarb.aico",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "private": true,
   "description": "Read-only Aico HomeLINK device monitoring for Homey Pro",
   "license": "MIT",
@@ -8,7 +8,10 @@
     "node": ">=22"
   },
   "scripts": {
-    "check": "node --check app.js && node --check api.js && node --check lib/device-profiles.js && node --check lib/homelink-client.js && node --check lib/inventory.js && node --check lib/service-dates.js && node --check lib/identity.js && node --check lib/maintenance.js && node --check lib/alert-state.js && node --check lib/device-alerts.js && node --check lib/alarm-alerts.js && node --check widgets/overview/api.js && node --check widgets/overview/public/overview.js && node --check drivers/homelink-device/driver.js && node --check drivers/homelink-device/device.js",
+    "check": "node --check app.js && node --check api.js && node --check lib/device-profiles.js && node --check lib/homelink-client.js && node --check lib/homelink-mqtt.js && node --check lib/inventory.js && node --check lib/service-dates.js && node --check lib/identity.js && node --check lib/maintenance.js && node --check lib/alert-state.js && node --check lib/device-alerts.js && node --check lib/alarm-alerts.js && node --check widgets/overview/api.js && node --check widgets/overview/public/overview.js && node --check drivers/homelink-device/driver.js && node --check drivers/homelink-device/device.js",
     "test": "node --test"
+  },
+  "dependencies": {
+    "mqtt": "5.16.1"
   }
 }
