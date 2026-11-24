@@ -30,6 +30,8 @@ npx --yes homey@4.5.3 app validate --level publish
 
 These checks run locally with synthetic test data and require no Homey or HomeLINK account. CLI installation requires npm registry access.
 
+Run `npm run test:acceptance` for the simulated household. The [offline acceptance guide](docs/development.md#offline-acceptance) includes browser and package checks. Use the [first-install checklist](docs/first-install.md) to record live verification.
+
 ## First live verification
 
 1. Confirm that the gateway and enrolled devices appear in the HomeLINK Dashboard. Confirm that the account can create an access key with Web API type and Standard scope. Use a key limited to devices whose data this Homey is authorised to display.

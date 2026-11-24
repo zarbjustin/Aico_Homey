@@ -24,6 +24,10 @@ jobs:
       - run: npm ci
       - run: npm run check
       - run: npm test
+      - run: npm run test:acceptance
+      - run: npx playwright install --with-deps --only-shell chromium
+      - run: npm run test:browser
       - run: npx --yes homey@4.5.3 app build
       - run: git diff --exit-code -- app.json
+      - run: npm run check:package
       - run: npx --yes homey@4.5.3 app validate --level publish

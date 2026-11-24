@@ -1,6 +1,7 @@
 .github/
 docs/
 test/
+qa/
 AGENTS.md
 .env
 .env.*

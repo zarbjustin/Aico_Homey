@@ -47,6 +47,23 @@ The app reads `GET /v1/property/{reference}/alerts` for properties linked to pai
 
 The [alarm Flow preview](alarm-preview.md) shares the alert snapshot and freshness logic. It checks the REST alarm category and event code, resolves the paired device, and discards ambiguous alarm snapshots. Existing maintenance cards continue using their own validated view. The [overview widget](widget.md) reads only the app’s cached device projections.
 
+## Offline acceptance
+
+Install dependencies with Node.js 22 and `npm ci`. The household scenario runs the app, driver, devices and widget routes together against synthetic REST and MQTT responses. It covers two properties, duplicate and mismatched reports, restart, an outage, expired readings and redacted diagnostics.
+
+```sh
+npm run test:acceptance
+npx playwright install --only-shell chromium
+npm run test:browser
+npx --yes homey@4.5.3 app build
+npm run check:package
+npx --yes homey@4.5.3 app validate --level publish
+```
+
+The browser checks serve the actual settings and widget files over a simulated Homey bridge with external requests blocked. They exercise a narrow viewport, both widget themes, credential handling and refresh errors. The package check expects the output of `app build`, which includes runtime dependencies. Run it before `app validate`, which restages the app for validation. CI runs the same checks.
+
+Use the [first-install checklist](first-install.md) to capture what is confirmed on an authorised Homey Pro.
+
 ## Progress and verification
 
 1. **Repository and CI.** Use a pull request with versioned Compose metadata, a lockfile, synthetic tests and Homey validation. CI executes offline application tests and builds a candidate package. It contains no Homey credentials or deployment step.
