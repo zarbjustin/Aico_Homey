@@ -44,6 +44,12 @@ Run `npm run test:acceptance` for the simulated household. The [offline acceptan
 
 For supported fields and models, see [compatibility](docs/compatibility.md). The [roadmap](docs/roadmap.md) tracks development and live verification separately.
 
+## License
+
+Copyright (c) 2026 zarbjustin.
+
+This project is licensed under the [GNU General Public License, version 3 only](LICENSE) (`GPL-3.0-only`).
+
 ## References
 
 - [Aico Ei1000G documentation](https://www.aico.co.uk/homelink/products/ei1000g-gateway/).
