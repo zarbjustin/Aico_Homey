@@ -81,6 +81,23 @@ test('pairs only COALARM records for Ei3018 and diagnoses mixed model types', ()
   ]);
 });
 
+test('pairs Ei1025 only under its verified inventory type and records a readings link', () => {
+  const row = { model: 'Ei1025', modelType: 'ENVCO2SENSOR', serialNumber: 'SYNTHETIC-ENV' };
+  const [record] = normalizeInventory([{
+    ...row, _rel: { readings: { co2Readings: 'device/SYNTHETIC-ENV/readings/environment-co2-indoor' } },
+  }]).values();
+  assert.equal(record.hasReadings, true);
+  assert.equal([...normalizeInventory([row]).values()][0].hasReadings, false);
+  assert.equal(normalizeInventory([{ ...row, modelType: 'FIREALARM' }]).size, 0);
+  assert.equal(normalizeInventory([{ ...row, model: 'Ei1030' }]).size, 0);
+  const [climate] = normalizeInventory([{
+    ...row, model: 'Ei1020', modelType: 'ENVSENSOR',
+    _rel: { readings: { temperatureReadings: 'device/SYNTHETIC-ENV/readings/environment-temperature-indoor' } },
+  }]).values();
+  assert.equal(climate.hasReadings, true);
+  assert.equal(normalizeInventory([{ ...row, model: 'Ei1020' }]).size, 0);
+});
+
 test('diagnostics expose canonical model names and counts without household identifiers', () => {
   const property = { property: 'property/SYNTHETIC-PRIVATE-REFERENCE' };
   const rows = [

@@ -1,0 +1,7 @@
+{
+  "type": "string",
+  "title": { "en": "Oldest displayed environmental reading" },
+  "getable": true,
+  "setable": false,
+  "uiComponent": "sensor"
+}
