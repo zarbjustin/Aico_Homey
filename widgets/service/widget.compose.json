@@ -1,0 +1,25 @@
+{
+  "name": { "en": "HomeLINK service" },
+  "height": 160,
+  "settings": [
+    {
+      "id": "replacementDays",
+      "type": "number",
+      "title": { "en": "Replacement window in days" },
+      "value": 90,
+      "min": 0,
+      "max": 365
+    },
+    {
+      "id": "testDays",
+      "type": "number",
+      "title": { "en": "Show last tests at least this many days ago" },
+      "value": 7,
+      "min": 1,
+      "max": 365
+    }
+  ],
+  "api": {
+    "getService": { "method": "GET", "path": "/:replacementDays/:testDays" }
+  }
+}
