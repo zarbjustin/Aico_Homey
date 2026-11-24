@@ -10,6 +10,8 @@ test('settings tests and saves exact credentials, and leaves a saved key alone o
   const ids = Array.from(html.matchAll(/ id="([^"]+)"/g), ([, id]) => id);
   const nodes = new Map(ids.map((id) => [id, {
     events: {},
+    evidence: {},
+    querySelector() { return this.evidence; },
     addEventListener(name, call) { this.events[name] = call; },
     reset() {
       const prefix = id === 'mqtt-credentials' ? 'mqtt-' : '';

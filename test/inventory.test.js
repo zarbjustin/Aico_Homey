@@ -107,7 +107,9 @@ test('diagnostics expose canonical model names and counts without household iden
     null,
   ];
   const summary = summarizeInventory(rows, normalizeInventory(rows));
-  assert.deepEqual(summary, {
+  const { modelEvidence, ...totals } = summary;
+  assert.equal(modelEvidence.length, 2);
+  assert.deepEqual(totals, {
     records: 4, pairable: 1, linkedProperties: 1, unknown: 1, missingModel: 1,
     models: [
       { model: 'Ei208WRF', count: 1, pairable: false, pairableCount: 0 },
@@ -115,4 +117,54 @@ test('diagnostics expose canonical model names and counts without household iden
     ],
   });
   assert.doesNotMatch(JSON.stringify(summary), /SYNTHETIC/);
+});
+
+test('groups radio and accessory evidence while masking private values and preserving pairing eligibility', () => {
+  const property = 'property/SYNTHETIC-PRIVATE-HOME';
+  const rows = [
+    {
+      ...sample, model: 'Ei450', modelType: 'EIACCESSORY', serialNumber: 'SYNTHETIC-CONTROLLER',
+      metadata: { ...sample.metadata, connectivityType: 'EIRF868' },
+      _rel: { property, alerts: 'device/SYNTHETIC-PRIVATE-CONTROLLER/alerts' },
+    },
+    {
+      model: 'ei208wrf', modelType: 'COALARM', serialNumber: 'SYNTHETIC-CANDIDATE',
+      metadata: { connectivityType: 'EIRF868' },
+      status: { operationalStatus: 'GOOD', lastTestedDate: '2026-02-31' },
+      _rel: { property },
+    },
+    {
+      model: 'Ei208WRF', modelType: 'COALARM', serialNumber: 'SYNTHETIC-CANDIDATE-SECOND',
+      metadata: { connectivityType: 'EIRF868' },
+    },
+    {
+      model: 'Ei208WRF', modelType: 'SYNTHETIC-PRIVATE-TYPE', serialNumber: 'SYNTHETIC-CANDIDATE-OTHER',
+      metadata: { connectivityType: 'SYNTHETIC-PRIVATE-RADIO' },
+      _rel: { property: 'property/../' },
+    },
+    { model: 'Ei208WRF', serialNumber: 'SYNTHETIC-CANDIDATE-MISSING' },
+    { model: 'SYNTHETIC-UNKNOWN', modelType: 'COALARM', metadata: { connectivityType: 'EIRF868' } },
+  ];
+  const devices = normalizeInventory(rows);
+  assert.deepEqual([...devices.values()].map(({ model }) => model), ['Ei450']);
+  const summary = summarizeInventory(rows, devices);
+  assert.deepEqual(summary.modelEvidence, [
+    {
+      model: 'Ei208WRF', modelType: 'COALARM', connectivity: 'EIRF868', records: 2, pairable: 0,
+      propertyLinks: 1, operationalStatus: 1, collectionStatus: 0, lastSeen: 0, lastTested: 0, replacementDate: 0, alertLinks: 0,
+    },
+    {
+      model: 'Ei208WRF', modelType: 'Missing', connectivity: 'Missing', records: 1, pairable: 0,
+      propertyLinks: 0, operationalStatus: 0, collectionStatus: 0, lastSeen: 0, lastTested: 0, replacementDate: 0, alertLinks: 0,
+    },
+    {
+      model: 'Ei208WRF', modelType: 'Other (masked)', connectivity: 'Other (masked)', records: 1, pairable: 0,
+      propertyLinks: 0, operationalStatus: 0, collectionStatus: 0, lastSeen: 0, lastTested: 0, replacementDate: 0, alertLinks: 0,
+    },
+    {
+      model: 'Ei450', modelType: 'EIACCESSORY', connectivity: 'EIRF868', records: 1, pairable: 1,
+      propertyLinks: 1, operationalStatus: 1, collectionStatus: 1, lastSeen: 1, lastTested: 1, replacementDate: 1, alertLinks: 1,
+    },
+  ]);
+  assert.doesNotMatch(JSON.stringify(summary), /SYNTHETIC|Example room|2035-09-03|2026-02-09|2026-02-03/i);
 });

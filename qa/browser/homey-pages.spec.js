@@ -11,7 +11,7 @@ const overview = {
 const service = {
   alarms: 3, replacement: { days: 30, checked: 2, due: 0 }, lastTest: { days: 14, checked: 0, due: 0 },
 };
-const exampleReport = 'Aico HomeLINK support report\nApp version 0.11.0\nWeb API inventory — Available';
+const exampleReport = 'Aico HomeLINK support report\nApp version 0.12.0\nWeb API inventory — Available';
 
 async function openHomeyPage(page, folder, fixture) {
   const routes = new Map([['/index.html', 'text/html']]);
@@ -34,8 +34,21 @@ async function openHomeyPage(page, folder, fixture) {
     };
     window.qa = state;
     const summary = {
-      records: 2, pairable: 1, linkedProperties: 1, unknown: 1, missingModel: 0,
-      models: [{ model: 'Ei3018', count: 1, pairable: true, pairableCount: 1 }],
+      records: 3, pairable: 1, linkedProperties: 1, unknown: 1, missingModel: 0,
+      models: [
+        { model: 'Ei208WRF', count: 1, pairable: false, pairableCount: 0 },
+        { model: 'Ei450', count: 1, pairable: true, pairableCount: 1 },
+      ],
+      modelEvidence: [
+        {
+          model: 'Ei208WRF', modelType: 'Other (masked)', connectivity: 'Missing', records: 1, pairable: 0,
+          propertyLinks: 1, alertLinks: 0, operationalStatus: 1, collectionStatus: 0, lastSeen: 0, lastTested: 0, replacementDate: 0,
+        },
+        {
+          model: 'Ei450', modelType: 'EIACCESSORY', connectivity: 'EIRF868', records: 1, pairable: 1,
+          propertyLinks: 1, alertLinks: 1, operationalStatus: 1, collectionStatus: 1, lastSeen: 1, lastTested: 0, replacementDate: 0,
+        },
+      ],
     };
     const homey = {
       ready() {},
@@ -52,6 +65,7 @@ async function openHomeyPage(page, folder, fixture) {
         }
         if (url === '/events') return callback(null, { state: state.saved.homelink_mqtt ? 'waiting' : 'disabled' });
         if (url === '/diagnostics') return state.fail ? callback(new Error('Unexpected fixture error')) : callback(null, { report: response });
+        if (state.inventoryUnavailable) return callback(null, { state: 'unavailable' });
         return state.saved.homelink_web_api
           ? callback(null, { state: 'available', fetchedAt: Date.now(), summary })
           : callback(null, { state: 'unconfigured' });
@@ -123,6 +137,35 @@ test.describe('Settings', () => {
     await page.getByRole('button', { name: 'Remove MQTT credentials' }).click();
     await expect(page.locator('#mqtt-status')).toHaveText(/MQTT updates are disabled/);
     expect(await page.evaluate(() => window.qa.saved.homelink_web_api.clientId)).toBe('saved-fixture');
+  });
+
+  test('shows redacted model evidence for tested and saved keys and clears stale details', async ({ page }) => {
+    await openHomeyPage(page, 'settings', { kind: 'settings' });
+    const tested = page.locator('#tested-model-details');
+    const saved = page.locator('#saved-model-details');
+    await expect(tested).toBeHidden();
+    await saved.locator('summary').click();
+    await expect(saved.locator('.model-evidence')).toContainText('Ei450 · Type EIACCESSORY · Connectivity EIRF868');
+    await expect(saved.locator('.model-evidence')).toContainText('Ei208WRF · Type Other (masked) · Connectivity Missing');
+    const client = page.getByLabel('Client ID', { exact: true });
+    await client.fill('verified-fixture');
+    await page.getByLabel('Client secret', { exact: true }).fill('candidate-fixture-secret');
+    const check = page.getByRole('button', { name: 'Test connection' });
+    await check.click();
+    await tested.locator('summary').click();
+    await expect(tested.locator('.model-evidence')).toContainText('Property links 1 · Alert links 1');
+    await expectNarrowLayout(page, 320);
+
+    await client.fill('invalid-fixture');
+    await check.click();
+    await expect(tested).toBeHidden();
+    await expect(tested.locator('.model-evidence')).toHaveText('');
+    await expect(saved).toBeVisible();
+
+    await page.evaluate(() => { window.qa.inventoryUnavailable = true; });
+    await page.getByRole('button', { name: 'Refresh saved status' }).click();
+    await expect(saved).toBeHidden();
+    await expect(saved.locator('.model-evidence')).toHaveText('');
   });
 
   test('generates a redacted report, handles clipboard restrictions and clears old results on error', async ({ page }) => {
