@@ -16,6 +16,12 @@ To repair access, verify and save a replacement key from the same HomeLINK accou
 
 The [compatibility matrix](compatibility.md) states the available app features and evidence level per model group. A model known from the Aico catalogue can appear in diagnostics while pairing is pending verification.
 
+## Inventory model evidence
+
+After **Test connection**, expand **Tested key model details** to see what the entered key can read before saving it. A failed test clears those details. **Saved key model details** reflects the current successful inventory from the saved key and clears on a failed or stale status. Both views group canonical models by the reported type and connectivity codes, and count inventory records, eligibility, property and alert links, recognised statuses and parseable dates.
+
+The views use code allowlists. Missing codes appear as **Missing** and unrecognised values as **Other (masked)**. Properties and alert links contribute counts, with their contents removed. Use the portal or an authorised local inspection for the gateway association and any unrecognised fields. An advertised alert link describes what the inventory contains. Confirm actual event delivery separately.
+
 ## Support report
 
 In app settings, select **Generate report**, then **Copy report**. If the Homey client restricts clipboard access, the app selects the text so you can copy it manually. The authenticated diagnostics route reads Homey's cached state. The report contains app version, inventory and MQTT status, alarm preview state, aggregate coverage and UTC timestamps for the latest successful inventory, maintenance and environmental reads. It omits keys, topic roots, device identifiers, names, locations, model lists, raw readings and raw errors.

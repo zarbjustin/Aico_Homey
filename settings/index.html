@@ -12,6 +12,10 @@
       width: 100%;
       font-family: ui-monospace, monospace;
     }
+    .model-evidence {
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
   </style>
 </head>
 <body>
@@ -36,11 +40,19 @@
     <button class="homey-button-secondary-full" type="button" id="remove">Remove saved credentials</button>
     <p id="status" role="status"></p>
     <p id="tested-inventory"></p>
+    <details id="tested-model-details" hidden>
+      <summary>Tested key model details</summary>
+      <p class="model-evidence"></p>
+    </details>
   </form>
   <section aria-labelledby="connection-title">
     <h2 id="connection-title" class="homey-title">Saved connection</h2>
     <p id="connection-state" role="status"></p>
     <p id="saved-inventory"></p>
+    <details id="saved-model-details" hidden>
+      <summary>Saved key model details</summary>
+      <p class="model-evidence"></p>
+    </details>
     <button class="homey-button-secondary-full" type="button" id="refresh-status">Refresh saved status</button>
   </section>
   <form id="mqtt-credentials">
@@ -102,6 +114,8 @@
       const status = document.getElementById('status');
       const testedInventory = document.getElementById('tested-inventory');
       const savedInventory = document.getElementById('saved-inventory');
+      const testedModelDetails = document.getElementById('tested-model-details');
+      const savedModelDetails = document.getElementById('saved-model-details');
       const connectionState = document.getElementById('connection-state');
       const refreshStatus = document.getElementById('refresh-status');
       let statusRequest = 0;
@@ -119,11 +133,25 @@
         return lines.join('. ');
       }
 
+      function renderInventory(summary, inventory, details) {
+        inventory.textContent = summary ? inventoryText(summary) : '';
+        const groups = summary?.modelEvidence ?? [];
+        details.hidden = groups.length === 0;
+        if (details.hidden) details.open = false;
+        details.querySelector('.model-evidence').textContent = groups.map((group) => [
+          group.model + ' · Type ' + group.modelType + ' · Connectivity ' + group.connectivity,
+          group.records + ' records · ' + group.pairable + ' eligible for pairing',
+          'Property links ' + group.propertyLinks + ' · Alert links ' + group.alertLinks,
+          'Operational status ' + group.operationalStatus + ' · Collection status ' + group.collectionStatus,
+          'Last seen ' + group.lastSeen + ' · Last tested ' + group.lastTested + ' · Replacement date ' + group.replacementDate,
+        ].join('\n')).join('\n\n');
+      }
+
       function loadStatus() {
         const request = ++statusRequest;
         Homey.api('GET', '/connection', {}, (error, result) => {
           if (request !== statusRequest) return;
-          savedInventory.textContent = '';
+          renderInventory(result?.state === 'available' && !error ? result.summary : undefined, savedInventory, savedModelDetails);
           if (error || !result) {
             connectionState.textContent = 'Homey could not load the saved connection status.';
             return;
@@ -136,7 +164,6 @@
             unavailable: 'The last inventory update failed. Check or replace the Web API key if HomeLINK denied access.',
           };
           connectionState.textContent = labels[result.state] || 'Connection status is unknown.';
-          if (result.state === 'available') savedInventory.textContent = inventoryText(result.summary);
         });
       }
 
@@ -150,7 +177,7 @@
 
       function verify(saveAfter) {
         const credentials = { clientId: clientId.value.trim(), clientSecret: clientSecret.value.trim() };
-        testedInventory.textContent = '';
+        renderInventory(undefined, testedInventory, testedModelDetails);
         if (!credentials.clientId || !credentials.clientSecret) {
           status.textContent = 'Enter both a client ID and a client secret.';
           return;
@@ -163,7 +190,7 @@
             status.textContent = error?.message || 'Homey could not verify the Web API key.';
             return;
           }
-          testedInventory.textContent = inventoryText(result.summary);
+          renderInventory(result.summary, testedInventory, testedModelDetails);
           if (!saveAfter) {
             setBusy(false);
             status.textContent = 'Connection verified. This test used the key you entered.';
@@ -195,7 +222,7 @@
           status.textContent = error ? 'Homey could not remove the credentials.' : 'Saved credentials removed.';
           if (!error) {
             form.reset();
-            testedInventory.textContent = '';
+            renderInventory(undefined, testedInventory, testedModelDetails);
             loadStatus();
           }
         });
