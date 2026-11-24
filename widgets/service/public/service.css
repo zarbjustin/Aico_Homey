@@ -58,3 +58,8 @@ dd[data-tone="attention"] {
 #status {
   margin-top: 6px;
 }
+
+@media (max-width: 245px) {
+  main { padding: 10px; }
+  dl > div { min-height: 40px; padding-block: 2px; }
+}

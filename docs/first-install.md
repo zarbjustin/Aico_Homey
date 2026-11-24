@@ -8,7 +8,7 @@
 ## Authorised read-only install
 
 - [ ] Confirm access to the HomeLINK Dashboard and a Standard-scope Web API key. Verify that the gateway and expected devices appear in the intended property in the dashboard.
-- [ ] Agree the Homey Pro and install window. Record the Homey model and firmware, the app version and the installation result.
+- [ ] Agree the Homey Pro and install window. Install the checked development build and record the Homey model and firmware, app version and installation result.
 - [ ] Open settings. Verify the Web API key, review the aggregate diagnostics, then save the verified key. Keep the key and account-specific evidence in private storage.
 - [ ] Compare Homey’s pairing list with the HomeLINK Dashboard. Record each product model, API type, gateway association and the fields available for comparison. Check that repeated discovery preserves identities and reports missing fields as unknown.
 - [ ] Compare operational and collection status, last test, replacement dates and reported environmental values with the dashboard. Record Homey’s retrieval time and the device’s reported contact or measurement time separately.
