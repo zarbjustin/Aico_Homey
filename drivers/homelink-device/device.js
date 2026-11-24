@@ -3,6 +3,7 @@
 const Homey = require('homey');
 const { AlertState, isFreshAlertSnapshot } = require('../../lib/alert-state');
 const { ALARM_KINDS, profileFor } = require('../../lib/device-profiles');
+const { READING_TIMESTAMP, readingCapabilities } = require('../../lib/environmental-readings');
 
 const INVENTORY_MAX_AGE_MS = 180_000;
 const MAINTENANCE_CAPABILITIES = ['homelink_maintenance_alerts', 'homelink_maintenance_retrieved_at'];
@@ -16,6 +17,12 @@ class HomeLinkDevice extends Homey.Device {
     await this.setUnavailable('Waiting for HomeLINK data.');
     for (const id of MAINTENANCE_CAPABILITIES) {
       if (!this.hasCapability(id)) await this.addCapability(id);
+    }
+    const environmental = profileFor(this.getData().model)?.environmental;
+    if (environmental?.length) {
+      for (const id of [...environmental, READING_TIMESTAMP]) {
+        if (!this.hasCapability(id)) await this.addCapability(id);
+      }
     }
     this.homey.app.addDevice(this);
   }
@@ -69,7 +76,7 @@ class HomeLinkDevice extends Homey.Device {
     return count > 0;
   }
 
-  async applyInventory(record, fetchedAt, alerts, current) {
+  async applyInventory(record, fetchedAt, alerts, current, samples) {
     if (!current()) return;
     const fresh = isFreshAlertSnapshot(alerts?.fetchedAt);
     this.#maintenance.resetIfPropertyChanged(record.propertyReference);
@@ -83,6 +90,8 @@ class HomeLinkDevice extends Homey.Device {
       homelink_maintenance_alerts: fresh ? maintenance : 'Unknown',
       homelink_maintenance_retrieved_at: fresh ? new Date(alerts.fetchedAt).toISOString() : 'Unknown',
     };
+    const environmental = profileFor(record.model)?.environmental;
+    if (environmental?.length) Object.assign(values, readingCapabilities(samples, environmental));
     for (const [key, value] of Object.entries(values)) {
       if (!current()) return;
       if (this.getCapabilityValue(key) !== value) await this.setCapabilityValue(key, value);

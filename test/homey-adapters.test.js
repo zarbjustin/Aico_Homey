@@ -23,6 +23,89 @@ class FakeHomeyObject {
   constructor(homey) { this.homey = homey; }
 }
 
+test('adds Ei1025 measurements through normal pairing and clears them after a failed refresh', { timeout: 5000 }, async (t) => {
+  const settings = new EventEmitter();
+  settings.get = (key) => key === 'homelink_web_api' ? { clientId: 'synthetic', clientSecret: 'synthetic' } : undefined;
+  const homey = { settings, setInterval: t.mock.fn(), clearInterval: t.mock.fn() };
+  const property = 'SYNTHETIC-ENV-HOME';
+  const serial = 'SYNTHETIC-ENV-SENSOR';
+  const propertyLink = 'property/' + property;
+  const deviceLink = 'device/' + serial;
+  let now = Date.parse('2026-11-24T12:15:00Z');
+  let failReadings = false;
+  t.mock.method(Date, 'now', () => now);
+  t.mock.method(globalThis, 'fetch', async (url) => {
+    const { pathname, searchParams } = new URL(url);
+    if (pathname === '/oauth2') return Response.json({ accessToken: 'synthetic' });
+    if (pathname.endsWith('/alerts')) return Response.json({ results: [] });
+    if (pathname.endsWith('/readings')) {
+      assert.equal(searchParams.get('date'), '2026-11-24');
+      if (failReadings) return new Response(null, { status: 503 });
+      return Response.json([
+        ['temperature', 'celsius', 21.5], ['humidity', 'rh %', 57], ['co2', 'ppm', 810],
+      ].map(([name, unit, value]) => ({
+        type: 'environment-' + name + '-indoor',
+        unit,
+        devices: [{
+          count: 1,
+          serialNumber: serial,
+          _rel: { device: deviceLink, property: propertyLink },
+          values: [{ value, readingDate: '2026-11-24T12:00:00Z' }],
+        }],
+      })));
+    }
+    return Response.json({ results: [{
+      model: 'Ei1025', modelType: 'ENVCO2SENSOR', serialNumber: serial, status: { operationalStatus: 'GOOD' },
+      _rel: { property: propertyLink, readings: { co2Readings: deviceLink + '/readings/environment-co2-indoor' } },
+    }] });
+  });
+  const App = loadAdapter('../app', 'App', FakeHomeyObject);
+  const Driver = loadAdapter('../drivers/homelink-device/driver', 'Driver', FakeHomeyObject);
+  const Device = loadAdapter('../drivers/homelink-device/device', 'Device', FakeHomeyObject);
+  const app = new App(homey);
+  homey.app = app;
+  app.onInit();
+  t.after(() => app.onUninit());
+  const driver = new Driver(homey);
+  const [pair] = await driver.onPairListDevices();
+  assert.deepEqual(pair.data, { id: deviceId(serial), model: 'Ei1025' });
+  const device = new Device(homey);
+  device.driver = driver;
+  const metrics = new Map();
+  const updates = new EventEmitter();
+  device.getData = () => pair.data;
+  let available = false;
+  device.getAvailable = () => available;
+  device.setUnavailable = async () => { available = false; };
+  device.setAvailable = async () => { available = true; updates.emit('available'); };
+  device.hasCapability = () => false;
+  device.addCapability = t.mock.fn(async () => {});
+  device.getCapabilityValue = (id) => metrics.get(id);
+  device.setCapabilityValue = async (id, value) => { metrics.set(id, value); updates.emit(id, value); };
+
+  const paired = once(updates, 'available');
+  await device.onInit();
+  await paired;
+  await new Promise(setImmediate);
+  assert.equal(metrics.get('measure_temperature'), 21.5);
+  assert.equal(metrics.get('measure_humidity'), 57);
+  assert.equal(metrics.get('measure_co2'), 810);
+  assert.equal(metrics.get('homelink_readings_sampled_at'), '2026-11-24T12:00:00.000Z');
+  const ids = device.addCapability.mock.calls.map((call) => call.arguments[0]);
+  assert.ok(ids.includes('measure_co2'));
+  assert.equal(ids.includes('alarm_co'), false);
+
+  failReadings = true;
+  now += 300_000;
+  const cleared = once(updates, 'homelink_readings_sampled_at');
+  const [poll] = homey.setInterval.mock.calls[0].arguments;
+  poll();
+  assert.deepEqual(await cleared, ['Unknown']);
+  assert.equal(metrics.get('measure_co2'), null);
+  assert.equal(metrics.get('homelink_operational_status'), 'Good');
+  assert.equal(available, true);
+});
+
 test('coalesces MQTT hints into REST refreshes and keeps polling after removal and rate limiting', { timeout: 5000 }, async (t) => {
   const webKey = { clientId: 'synthetic', clientSecret: 'synthetic' };
   let mqttKey = { clientId: 'synthetic', username: 'synthetic', password: 'synthetic', topicRoot: 'synthetic' };

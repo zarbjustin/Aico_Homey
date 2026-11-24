@@ -2,7 +2,7 @@
 
 An independent Homey Pro SDK 3 app that reads device inventory and maintenance information from the Aico HomeLINK cloud. The Ei1000G gateway sends data to HomeLINK, and Homey reads that data over HTTPS. Homey needs internet access and a HomeLINK Dashboard account that can create a **Web API access key with Standard scope**.
 
-**v0.9 is a development build.** The code can discover and pair an Ei1000G, Ei3014, Ei3016, Ei3018, Ei3028, Ei3030 or Ei450 when the model appears in the supported HomeLINK inventory. Ei3018 pairing requires the `COALARM` type. Each tile can show the reported operational and collection statuses, last seen, last tested and replacement dates, and when Homey retrieved the record. Missing or unrecognised fields show **Unknown**. A failed inventory refresh marks paired devices unavailable. Cloud snapshot retrieval and last device contact are separate timestamps.
+**v0.10 is a development build.** The code can discover and pair an Ei1000G, Ei1020, Ei1025, Ei3014, Ei3016, Ei3018, Ei3028, Ei3030 or Ei450 when the model appears in the supported HomeLINK inventory. See [compatibility](docs/compatibility.md) for model type requirements. Each tile can show the reported operational and collection statuses, last seen, last tested and replacement dates, and when Homey retrieved the record. Missing or unrecognised fields show **Unknown**. A failed inventory refresh marks paired devices unavailable. Cloud snapshot retrieval and last device contact are separate timestamps.
 
 Device tiles also show the count of active faults and maintenance alerts reported by HomeLINK. An incomplete, ambiguous or unavailable alert feed shows **Unknown** for maintenance while the app can still display inventory information. The maintenance retrieval timestamp is shown separately.
 
@@ -11,6 +11,8 @@ Use the device's [maintenance Flow cards](docs/flows.md) in Flow or Advanced Flo
 The [alarm Flow preview](docs/alarm-preview.md) adds separate fire and carbon monoxide report cards, disabled by default. Offline tests inject synthetic cloud responses through the app and exercise the device-scoped Homey SDK adapters. The [HomeLINK overview and service widgets](docs/widget.md) show cached coverage, maintenance and alarm service reminders.
 
 The optional [MQTT listener](docs/development.md#optional-mqtt-updates) can prompt a faster Web API refresh. It uses a separate HomeLINK key. Regular polling continues during broker outages. MQTT delivery and model-specific Ei208WRF support are pending live verification.
+
+The [Ei1020 and Ei1025 environmental sensors](docs/development.md#environmental-readings) use Homey’s temperature and relative humidity measurements. Ei1025 also reports carbon dioxide. Measurements require matching recent Web API samples.
 
 The Aico system remains responsible for local detection, audible alerts and testing. Cloud reports are supplementary and can arrive late.
 

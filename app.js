@@ -195,17 +195,16 @@ class HomeLinkApp extends Homey.App {
     });
   }
 
-  async #readMaintenance(client, references, refresh) {
-    const maintenance = new Map();
+  async #readProperties(client, references, read) {
+    const snapshots = new Map();
     for (let index = 0; index < references.length; index += MAX_CONCURRENT_PROPERTIES) {
       if (this.#stopped || client !== this.#client) break;
       const batch = references.slice(index, index + MAX_CONCURRENT_PROPERTIES);
       await Promise.allSettled(batch.map(async (reference) => {
-        const snapshot = await client.getPropertyMaintenance(reference, { refresh });
-        maintenance.set(reference, snapshot);
+        snapshots.set(reference, await read(reference));
       }));
     }
-    return maintenance;
+    return snapshots;
   }
 
   async #syncDevices(refresh) {
@@ -224,7 +223,13 @@ class HomeLinkApp extends Homey.App {
       return { device, record: record?.model === model ? record : undefined };
     });
     const references = Array.from(new Set(devices.map(({ record }) => record?.propertyReference).filter(Boolean)));
-    const maintenance = await this.#readMaintenance(client, references, refresh);
+    const maintenance = await this.#readProperties(client, references,
+      (reference) => client.getPropertyMaintenance(reference, { refresh }));
+    const environmentalProperties = Array.from(new Set(devices
+      .filter(({ record }) => record?.hasReadings)
+      .map(({ record }) => record.propertyReference).filter(Boolean)));
+    const readings = this.#readProperties(client, environmentalProperties,
+      (reference) => client.getPropertyReadings(reference));
     await Promise.allSettled(devices.map(async ({ device, record }) => {
       const current = () => !this.#stopped && client === this.#client && this.#devices.has(device);
       if (!current()) return;
@@ -240,7 +245,10 @@ class HomeLinkApp extends Homey.App {
           return;
         }
         const alerts = maintenance.get(record.propertyReference);
-        await device.applyInventory(record, snapshot.fetchedAt, alerts, current);
+        const samples = record.hasReadings
+          ? (await readings).get(record.propertyReference)?.byDevice.get(record.id)
+          : undefined;
+        await device.applyInventory(record, snapshot.fetchedAt, alerts, current, samples);
       } catch {
         if (current()) {
           device.invalidateObservations();

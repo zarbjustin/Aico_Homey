@@ -24,6 +24,14 @@ The listener uses MQTT 3.1.1 with certificate-validated TLS. It subscribes to th
 
 For the first live test, compare topic access and listener status with the account's MQTT export. Record when a confirmed report appears in MQTT and REST, how reconnect behaves, and whether polling covers delayed REST reports. Retry with the MQTT key removed to compare the normal polling path. Offline tests use a synthetic broker and cloud responses.
 
+## Environmental readings
+
+Ei1020 pairs as `ENVSENSOR` and uses Homey’s built-in temperature and relative humidity measurements. Ei1025 pairs as `ENVCO2SENSOR` and adds CO₂. The [reference device fixtures](compatibility.md) and [property readings fixture](https://github.com/RogerSelwyn/python_homelink/blob/c6db59b8dca7f07d67baba08433e198da1456585/tests/data/property_readings.json) establish the initial schema. The app requests `GET /v1/property/{reference}/readings?date=YYYY-MM-DD` over the Web API when paired devices advertise supported readings. It shares a five-minute cache per property and includes the previous UTC date during the first hour of a new day. This keeps recent overnight readings visible.
+
+Homey displays the newest plausible sample of each expected unit for the linked device and property, up to an hour after sampling. The tile shows the oldest measurement time across the values it currently displays. Missing, stale or conflicting samples clear the corresponding measurement. CO₂ is an environmental measurement and stays separate from the CO alarm preview. A readings failure leaves the device inventory and maintenance path usable.
+
+During first-home acceptance, compare values, units and measurement timestamps with the dashboard. Verify native Homey device indicators, Flow cards and Insights on the hub. Fault and risk metrics need their own data evidence.
+
 ## Maintenance alerts
 
 The app reads `GET /v1/property/{reference}/alerts` for properties linked to paired inventory devices. The [reference integration’s alert fixture](https://github.com/RogerSelwyn/AICO_HomeLINK/blob/09ec979ef11c6a9b2950b7439846575dd7c85fbb/tests/data/base/alerts_alarm.json) and [event category catalogue](https://github.com/RogerSelwyn/python_homelink/blob/c6db59b8dca7f07d67baba08433e198da1456585/tests/data/lookups_eventtype.json) provide the initial contract. A single account session shares token renewal and each property reuses a successful snapshot for five minutes. Event identifiers are kept in memory to compare consecutive snapshots. Only aggregate counts and retrieval times enter Homey capabilities and Flow tokens.
