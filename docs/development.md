@@ -4,7 +4,7 @@
 
 The [Home Assistant implementation](https://github.com/RogerSelwyn/AICO_HomeLINK/blob/09ec979ef11c6a9b2950b7439846575dd7c85fbb/custom_components/homelink/helpers/oauth2.py) exchanges a Web API client ID and secret for an expiring bearer token. Its token request uses an HTTPS query string. The Homey client encodes parameters, blocks redirects and replaces transport errors with fixed messages. It keeps the token in memory for at most 19 hours, one hour less than the reference implementation’s refresh interval, and renews once on an inventory 401. Homey persists the Web API key in its app settings.
 
-The [Python reference](https://github.com/RogerSelwyn/python_homelink/tree/c6db59b8dca7f07d67baba08433e198da1456585) reads the inventory from `GET /v1/device`. The upstream fixture describes a paginated envelope. This iteration fails discovery when the response identifies multiple pages because the page traversal contract has yet to be confirmed. No Python code or fixture data is included in this repository. The upstream documentation confirms [the dashboard role and key requirements](https://rogerselwyn.github.io/AICO_HomeLINK/). Individual homeowner dashboard and key access remain to be confirmed with Aico.
+The [Python reference](https://github.com/RogerSelwyn/python_homelink/tree/c6db59b8dca7f07d67baba08433e198da1456585) reads inventory from `GET /v1/device`. Its public fixture includes `count`, `page`, `limit` and `totalPages`. The app accepts complete single-page responses and checks those fields when supplied. It rejects multiple pages or inconsistent metadata before updating tiles from the response. Pairing through multiple pages awaits the vendor's continuation request contract. No Python code or fixture data is included in this repository. The upstream documentation confirms [the dashboard role and key requirements](https://rogerselwyn.github.io/AICO_HomeLINK/). Individual homeowner dashboard and key access remain to be confirmed with Aico.
 
 One client shares inventory requests across pairing and all device tiles. The app refreshes every minute while devices are paired. A successful snapshot can be reused for 20 seconds to absorb concurrent discovery. Rate limiting delays the next request using the server's retry interval or a one-minute fallback. On a failed read, Homey marks affected tiles unavailable and preserves their previous displayed timestamps. A cloud response can itself contain old device data. The vendor's data collection status describes the collection service and does not establish whether a radio device is online.
 
@@ -72,9 +72,9 @@ npm run check:package
 npx --yes homey@4.5.3 app validate --level publish
 ```
 
-The browser checks serve the actual settings and widget files over a simulated Homey bridge with external requests blocked. They exercise a narrow viewport, both widget themes, credential handling and refresh errors. The package check expects the output of `app build`, which includes runtime dependencies. Run it before `app validate`, which restages the app for validation. CI runs the same checks.
+The browser checks serve the actual settings and widget files over a simulated Homey bridge with external requests blocked. They exercise a narrow viewport, both widget themes, credential handling and refresh errors. The package check expects the output of `app build`, which includes runtime dependencies. Run it before `app validate`, which restages the app for validation. CI runs the same checks and records the checked out commit and staging content fingerprint in the job summary.
 
-Use the [first-install checklist](first-install.md) to capture what is confirmed on an authorised Homey Pro.
+Use the [first-install checklist](first-install.md) to capture what is confirmed on an authorised Homey Pro, then record any authorised Test-channel steps in the [Test pilot checklist](test-pilot.md).
 
 ## Progress and verification
 

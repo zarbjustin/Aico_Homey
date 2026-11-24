@@ -2,7 +2,7 @@
 
 const assert = require('node:assert/strict');
 const { test } = require('node:test');
-const { HomeLinkClient, readCredentials } = require('../lib/homelink-client');
+const { HomeLinkClient, IncompleteInventoryError, readCredentials } = require('../lib/homelink-client');
 
 const credentials = { clientId: 'test & id', clientSecret: 'test + = secret' };
 const token = { accessToken: 'synthetic-token' };
@@ -100,6 +100,23 @@ test('rejects incomplete or malformed inventory envelopes', async () => {
   ]) {
     const { client } = clientFor([{ body: token }, { body }]);
     await assert.rejects(client.getInventory(), reason);
+  }
+});
+
+test('validates optional paging metadata and never substitutes a prior good snapshot for an incomplete list', async () => {
+  const complete = { ...inventory, count: 1, limit: 50 };
+  for (const metadata of [
+    { count: 2 }, { count: 0 }, { count: '1' }, { limit: 0 }, { limit: '50' }, { totalPages: 0 }, { totalPages: '1' },
+  ]) {
+    const { client, calls } = clientFor([
+      { body: token }, { body: complete }, { body: { ...complete, ...metadata } },
+      { body: { count: 0, limit: 50, page: 1, totalPages: 0, results: [] } },
+    ]);
+    await client.getInventory();
+    await assert.rejects(client.getInventory({ refresh: true }), IncompleteInventoryError);
+    assert.deepEqual((await client.getInventory()).rows, []);
+    assert.equal(calls.length, 4);
+    client.close();
   }
 });
 

@@ -2,7 +2,7 @@
 
 An independent Homey Pro SDK 3 app that reads device inventory and maintenance information from the Aico HomeLINK cloud. The Ei1000G gateway sends data to HomeLINK, and Homey reads that data over HTTPS. Homey needs internet access and a HomeLINK Dashboard account that can create a **Web API access key with Standard scope**.
 
-**v0.12 is a development build.** The code can discover and pair an Ei1000G, Ei1020, Ei1025, Ei3014, Ei3016, Ei3018, Ei3028, Ei3030 or Ei450 when the model appears in the supported HomeLINK inventory. See [compatibility](docs/compatibility.md) for model type requirements. Each tile can show the reported operational and collection statuses, last seen, last tested and replacement dates, and when Homey retrieved the record. Missing or unrecognised fields show **Unknown**. A failed inventory refresh marks paired devices unavailable. Cloud snapshot retrieval and last device contact are separate timestamps.
+**v0.13 is a development build.** The code can discover and pair an Ei1000G, Ei1020, Ei1025, Ei3014, Ei3016, Ei3018, Ei3028, Ei3030 or Ei450 when the model appears in the supported HomeLINK inventory. See [compatibility](docs/compatibility.md) for model type requirements. Each tile can show the reported operational and collection statuses, last seen, last tested and replacement dates, and when Homey retrieved the record. Missing or unrecognised fields show **Unknown**. A failed inventory refresh marks paired devices unavailable. Cloud snapshot retrieval and last device contact are separate timestamps.
 
 Device tiles also show the count of active faults and maintenance alerts reported by HomeLINK. An incomplete, ambiguous or unavailable alert feed shows **Unknown** for maintenance while the app can still display inventory information. The maintenance retrieval timestamp is shown separately.
 
@@ -33,7 +33,7 @@ npx --yes homey@4.5.3 app validate --level publish
 
 These checks run locally with synthetic test data and require no Homey or HomeLINK account. CLI installation requires npm registry access.
 
-Run `npm run test:acceptance` for the simulated household. The [offline acceptance guide](docs/development.md#offline-acceptance) includes browser and package checks. Use the [first-install checklist](docs/first-install.md) to record live verification.
+Run `npm run test:acceptance` for the simulated household. The [offline acceptance guide](docs/development.md#offline-acceptance) includes browser and package checks. Record live verification with the [first-install checklist](docs/first-install.md) and any authorised Test release with the [Test pilot checklist](docs/test-pilot.md).
 
 ## First live verification
 

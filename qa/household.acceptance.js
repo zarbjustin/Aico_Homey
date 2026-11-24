@@ -134,6 +134,28 @@ test('simulated household acceptance', { timeout: 10_000 }, async (t) => {
     assert.equal(triggers.length, 4);
   });
 
+  await t.test('rejects a partial account inventory and recovers the same paired devices', async () => {
+    const before = (await api.getSupportReport({ homey })).report;
+    const firstCall = cloud.calls.length;
+    cloud.partialInventory = true;
+    await household.pollAfter(MINUTE);
+    assert.deepEqual(await api.getConnectionStatus({ homey }), { state: 'incomplete' });
+    const overview = await getOverview({ homey });
+    assert.equal(overview.paired, pairs.length);
+    assert.equal(overview.reporting, 0);
+    assert.deepEqual(cloud.calls.slice(firstCall), ['/v1/device']);
+    const during = (await api.getSupportReport({ homey })).report;
+    assert.match(during, /Web API inventory — Incomplete device list/);
+    assert.deepEqual(during.match(/Last successful read .+/g), before.match(/Last successful read .+/g));
+    assert.equal(triggers.length, 4);
+
+    cloud.partialInventory = false;
+    await household.pollAfter(MINUTE);
+    assert.equal((await getOverview({ homey })).reporting, pairs.length);
+    assert.equal(device('fire').getData().id, id('fire'));
+    assert.equal(triggers.length, 4);
+  });
+
   await t.test('keeps paired identities across restart and sends only subsequent new reports', async () => {
     household.stop();
     await household.start(pairs);

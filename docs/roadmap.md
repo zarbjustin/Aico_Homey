@@ -8,7 +8,7 @@
 | 4. Maintenance and service dashboard | Replacement and last-test Flow conditions, the HomeLINK service widget and the v0.11 redacted support report are offline-tested. Compare reported dates, maintenance coverage, widget counts and reminder conditions on Homey Pro. Event-specific fault mappings require observed HomeLINK reports. |
 | 5. Environmental products | v0.10 adds offline-tested Ei1020 and Ei1025 pairing, temperature, humidity, Ei1025 CO₂ and sample freshness. Verify native capabilities, Insights and Flow behaviour on Homey Pro. Ei1030 needs model-specific inventory and reading evidence. |
 | 6. Wider radio and accessories | v0.12 adds offline-tested model evidence to the connection check and saved inventory. Use the first inventory pass to verify the Ei450 record and capture the Ei208WRF type, gateway association and available fields. Extend profiles by verified radio variant, including earlier CO products and RadioLINK+ 600 Series devices. |
-| 7. Account scale and release | Verify property selection and pagination. Run a private Test pilot, check upgrade and recovery on hardware, and prepare the model and feature matrix for App Store review. Treat smart-meter data as a separate opt-in. |
+| 7. Account scale and release | v0.13 rejects incomplete inventory and records a package fingerprint in CI. Verify the vendor's pagination and property-selection contract, then use the [Test pilot checklist](test-pilot.md) for authorised upgrade and recovery checks and release evidence. Treat smart-meter data as a separate opt-in. |
 
 Work requiring live HomeLINK evidence starts with the [first validation procedure](development.md). Keep offline validation, GitHub CI, Homey installation and physical acceptance as separate checks.
 

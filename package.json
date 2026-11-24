@@ -1,6 +1,6 @@
 {
   "name": "uk.co.zarb.aico",
-  "version": "0.12.0",
+  "version": "0.13.0",
   "private": true,
   "description": "Read-only Aico HomeLINK device monitoring for Homey Pro",
   "license": "MIT",

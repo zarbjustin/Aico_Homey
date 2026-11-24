@@ -43,7 +43,7 @@ function createHousehold(t) {
   ]);
   settings.get = (key) => saved.get(key);
   const cloud = {
-    down: false, badReadingLink: false, sampleAt: new Date(now).toISOString(),
+    down: false, partialInventory: false, badReadingLink: false, sampleAt: new Date(now).toISOString(),
     alerts: new Map([[NORTH, [alert('fire', 'first-fire', 'FIRE_ALARM')]], [SOUTH, []]]),
     calls: [],
   };
@@ -71,7 +71,12 @@ function createHousehold(t) {
           readings: device.readings ? { temperatureReadings: 'device/' + serial(name) + '/readings/environment-temperature-indoor' } : undefined,
         },
       }));
-      return Response.json({ count: results.length, page: 1, totalPages: 1, results });
+      return Response.json({
+        count: results.length,
+        page: 1,
+        totalPages: 1,
+        results: cloud.partialInventory ? results.slice(0, 1) : results,
+      });
     }
     const [, property, resource] = /^\/v1\/property\/([^/]+)\/(alerts|readings)$/.exec(pathname) ?? [];
     assert.ok(cloud.alerts.has(property), 'Unexpected request to ' + pathname);
