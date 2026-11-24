@@ -10,11 +10,17 @@ One client shares inventory requests across pairing and all device tiles. The ap
 
 ## Account onboarding
 
-The two authenticated [Homey app API](https://apps.developer.homey.app/advanced/web-api) routes support the local app settings view. The connection check tests the entered key in a separate client. The saved connection route reports the health of the most recent inventory read and returns only aggregate counts and canonical model names. The client never returns a saved key to the settings page. The Homey settings manager writes the submitted key after its check succeeds.
+Two authenticated [Homey app API](https://apps.developer.homey.app/advanced/web-api) routes support connection setup. The connection check tests the entered key in a separate client. The saved connection route reports the health of the most recent inventory read and returns only aggregate counts and canonical model names. The client never returns a saved key to the settings page. The Homey settings manager writes the submitted key after its check succeeds.
 
 To repair access, verify and save a replacement key from the same HomeLINK account. Pairing rests on the same stable device IDs and leaves existing tiles and Flows in place. The app closes the previous session, resets its cached observations and rechecks its registered devices. Rejecting a candidate leaves the prior session in place.
 
 The [compatibility matrix](compatibility.md) states the available app features and evidence level per model group. A model known from the Aico catalogue can appear in diagnostics while pairing is pending verification.
+
+## Support report
+
+In app settings, select **Generate report**, then **Copy report**. If the Homey client restricts clipboard access, the app selects the text so you can copy it manually. The authenticated diagnostics route reads Homey's cached state. The report contains app version, inventory and MQTT status, alarm preview state, aggregate coverage and UTC timestamps for the latest successful inventory, maintenance and environmental reads. It omits keys, topic roots, device identifiers, names, locations, model lists, raw readings and raw errors.
+
+A successful cloud response can contain no usable recent samples. Read time and coverage are shown separately, and a failed refresh can leave the last successful read time visible while coverage drops. Restarting the app or changing the Web API key starts a new session with fresh read timestamps.
 
 ## Optional MQTT updates
 

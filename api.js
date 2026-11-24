@@ -10,4 +10,7 @@ module.exports = {
   async getEventStatus({ homey }) {
     return homey.app.getEventStatus();
   },
+  async getSupportReport({ homey }) {
+    return homey.app.getSupportReport();
+  },
 };

@@ -418,6 +418,10 @@ test('pairs, migrates, dispatches gated Flow cards, and recovers without replayi
   await assert.rejects(replacementDue({ device, days: 2 }), /recent HomeLINK inventory update/);
   await assert.rejects(testReminder({ device, days: 1 }), /recent HomeLINK inventory update/);
   await assert.rejects(driver.onPairListDevices(), /Add HomeLINK Web API credentials/);
+  const { report } = await require('../api').getSupportReport({ homey });
+  assert.match(report, /Web API inventory — Web API key not configured/);
+  assert.match(report, /0\/1 paired devices with usable data/);
+  assert.deepEqual(report.match(/Last successful read .+/g), Array(3).fill('Last successful read Unavailable'));
 });
 
 test('connection checks reject a candidate without replacing saved access', async (t) => {
@@ -433,6 +437,7 @@ test('connection checks reject a candidate without replacing saved access', asyn
   homey.app = app;
   assert.deepEqual(manifest.api.checkConnection, { method: 'POST', path: '/connection/check', public: false });
   assert.deepEqual(manifest.api.getConnectionStatus, { method: 'GET', path: '/connection', public: false });
+  assert.deepEqual(manifest.api.getSupportReport, { method: 'GET', path: '/diagnostics', public: false });
   let now = 0;
   t.mock.method(Date, 'now', () => now);
   const fetch = t.mock.method(globalThis, 'fetch', async (url, options) => {
@@ -456,6 +461,10 @@ test('connection checks reject a candidate without replacing saved access', asyn
   assert.deepEqual(check.summary.models, [{ model: 'Ei3028', count: 1, pairable: true, pairableCount: 1 }]);
   assert.doesNotMatch(JSON.stringify(check), /candidate-secret|SYNTHETIC-PRIVATE-SERIAL/);
   assert.deepEqual(await api.getConnectionStatus({ homey }), { state: 'waiting' });
+  const waiting = (await api.getSupportReport({ homey })).report;
+  assert.match(waiting, /Web API inventory — Waiting for the first read/);
+  assert.match(waiting, /No applicable devices paired/);
+  assert.deepEqual(waiting.match(/Last successful read .+/g), Array(3).fill('Last successful read Unavailable'));
   assert.equal(settings.set.mock.callCount(), 0);
 
   await assert.rejects(candidate('rate-limit'), /rate limited/);
@@ -469,4 +478,5 @@ test('connection checks reject a candidate without replacing saved access', asyn
   assert.equal((await api.getConnectionStatus({ homey })).state, 'available');
   now += 180_001;
   assert.deepEqual(await api.getConnectionStatus({ homey }), { state: 'stale', fetchedAt: 120_000 });
+  assert.match((await api.getSupportReport({ homey })).report, /Web API inventory — Stale/);
 });

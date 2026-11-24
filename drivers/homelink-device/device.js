@@ -12,6 +12,7 @@ class HomeLinkDevice extends Homey.Device {
   #maintenance = new AlertState();
   #alarmStates = new Map(ALARM_KINDS.map((kind) => [kind, new AlertState()]));
   #inventory = null;
+  #readings;
 
   async onInit() {
     await this.setUnavailable('Waiting for HomeLINK data.');
@@ -39,6 +40,7 @@ class HomeLinkDevice extends Homey.Device {
 
   invalidateObservations() {
     this.#inventory = null;
+    this.#readings = undefined;
     this.#maintenance.reset();
     this.invalidateAlarmPreview();
   }
@@ -58,6 +60,19 @@ class HomeLinkDevice extends Homey.Device {
     return {
       inventoryFetchedAt: reporting ? this.#inventory.fetchedAt : null,
       maintenanceCount: reporting ? this.#maintenance.count(now) ?? null : null,
+    };
+  }
+
+  getDiagnosticStatus(now) {
+    const dashboard = this.getDashboardStatus(now);
+    const inventory = dashboard.inventoryFetchedAt !== null;
+    const capabilities = profileFor(this.getData().model)?.environmental;
+    return {
+      inventory,
+      maintenance: dashboard.maintenanceCount !== null,
+      environmental: capabilities?.length
+        ? inventory && readingCapabilities(this.#readings, capabilities, now)[READING_TIMESTAMP] !== 'Unknown'
+        : null,
     };
   }
 
@@ -105,6 +120,7 @@ class HomeLinkDevice extends Homey.Device {
       lastTested: record.values.homelink_last_tested,
       replaceBy: record.values.homelink_replace_by,
     };
+    this.#readings = samples;
     await this.#updateAlarmFlows(record, alerts, current);
     if (current() && change) {
       try {

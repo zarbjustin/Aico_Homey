@@ -5,6 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>HomeLINK Web API</title>
   <script src="/homey.js" data-origin="settings"></script>
+  <style>
+    #support-report {
+      box-sizing: border-box;
+      display: block;
+      width: 100%;
+      font-family: ui-monospace, monospace;
+    }
+  </style>
 </head>
 <body>
   <header class="homey-header">
@@ -71,6 +79,17 @@
     </fieldset>
     <p id="alarm-preview-status" role="status"></p>
   </form>
+  <section aria-labelledby="support-title">
+    <h2 id="support-title" class="homey-title">Support report</h2>
+    <p>Shows the latest successful cloud reads and how many paired devices have usable data.</p>
+    <div id="support-output" class="homey-form-group" hidden>
+      <label class="homey-form-label" for="support-report">Redacted support report</label>
+      <textarea class="homey-form-input" id="support-report" rows="8" readonly spellcheck="false"></textarea>
+    </div>
+    <button class="homey-button-secondary-full" type="button" id="support-generate">Generate report</button>
+    <button class="homey-button-secondary-full" type="button" id="support-copy" disabled>Copy report</button>
+    <p id="support-status" role="status"></p>
+  </section>
   <script>
     function onHomeyReady(Homey) {
       const key = 'homelink_web_api';
@@ -207,7 +226,49 @@
       });
 
       setupMqttSettings(Homey);
+      setupSupportReport(Homey);
       Homey.ready();
+    }
+
+    function setupSupportReport(Homey) {
+      const report = document.getElementById('support-report');
+      const output = document.getElementById('support-output');
+      const generate = document.getElementById('support-generate');
+      const copy = document.getElementById('support-copy');
+      const status = document.getElementById('support-status');
+
+      generate.addEventListener('click', () => {
+        generate.disabled = true;
+        copy.disabled = true;
+        report.value = '';
+        output.hidden = true;
+        status.textContent = 'Generating report…';
+        Homey.api('GET', '/diagnostics', {}, (error, result) => {
+          generate.disabled = false;
+          if (error || typeof result?.report !== 'string' || !result.report) {
+            status.textContent = 'Homey could not generate the support report.';
+            return;
+          }
+          report.value = result.report;
+          output.hidden = false;
+          copy.disabled = false;
+          status.textContent = 'Report ready to copy.';
+        });
+      });
+
+      copy.addEventListener('click', async () => {
+        const text = report.value;
+        if (!text) return;
+        try {
+          await navigator.clipboard.writeText(text);
+          if (report.value === text) status.textContent = 'Support report copied.';
+        } catch {
+          if (report.value !== text) return;
+          report.focus();
+          report.select();
+          status.textContent = 'Report selected. Use your device’s Copy command.';
+        }
+      });
     }
 
     function setupMqttSettings(Homey) {
