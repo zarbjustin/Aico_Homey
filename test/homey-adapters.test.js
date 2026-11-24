@@ -2,26 +2,11 @@
 
 const assert = require('node:assert/strict');
 const { EventEmitter, once } = require('node:events');
-const fs = require('node:fs');
-const { createRequire } = require('node:module');
 const { test } = require('node:test');
-const vm = require('node:vm');
 const flowManifest = require('../drivers/homelink-device/driver.flow.compose.json');
+const { FakeHomeyObject, loadAdapter } = require('../qa/load-homey-adapter');
 const { HomeLinkMqtt, readMqttCredentials } = require('../lib/homelink-mqtt');
 const { deviceId } = require('../lib/identity');
-
-function loadAdapter(path, baseClass, constructor, modules = {}) {
-  const filename = require.resolve(path);
-  const localRequire = createRequire(filename);
-  const module = { exports: {} };
-  const load = vm.runInThisContext('(function (require, module) {\n' + fs.readFileSync(filename, 'utf8') + '\n})', { filename });
-  load((name) => name === 'homey' ? { [baseClass]: constructor } : modules[name] ?? localRequire(name), module);
-  return module.exports;
-}
-
-class FakeHomeyObject {
-  constructor(homey) { this.homey = homey; }
-}
 
 test('adds Ei1025 measurements through normal pairing and clears them after a failed refresh', { timeout: 5000 }, async (t) => {
   const settings = new EventEmitter();
