@@ -44,7 +44,13 @@ test('simulated household acceptance', { timeout: 10_000 }, async (t) => {
       replacement: { days: 0, checked: 3, due: 1 },
       lastTest: { days: 7, checked: 3, due: 3 },
     });
-    assert.equal(cloud.calls.length, previous, 'widgets only read cached device data');
+    const { report } = await api.getSupportReport({ homey });
+    assert.match(report, /Web API inventory — Available\n  6\/6 paired devices with usable data/);
+    assert.match(report, /Maintenance alerts — 6\/6 paired devices with usable data/);
+    assert.match(report, /Environmental readings — 2\/2 paired devices with usable data/);
+    assert.match(report, /MQTT listener — Connecting\nAlarm Flow preview — Disabled/);
+    assert.deepEqual(report.match(/Last successful read .+/g), Array(3).fill('Last successful read 2031-04-12T12:00:00.000Z'));
+    assert.equal(cloud.calls.length, previous, 'widgets and the support report only read cached data');
   });
 
   await t.test('reports each new fire, CO and maintenance event once to the matching alarm', async () => {
@@ -87,10 +93,12 @@ test('simulated household acceptance', { timeout: 10_000 }, async (t) => {
     assert.equal(value('air', TEMPERATURE), 21);
     assert.equal(value('climate', TEMPERATURE), 17, 'foreign reading cannot replace a valid sample');
     assert.equal(await conditions.get('homelink_maintenance_data_available')({ device: device('fire') }), false);
+    assert.match((await api.getSupportReport({ homey })).report, /Maintenance alerts — 2\/6 paired devices with usable data/);
     cloud.alerts.set(NORTH, cloud.alerts.get(NORTH).filter((report) => report !== southFault));
   });
 
   await t.test('marks an outage unavailable and seeds recovery without replaying active reports', async () => {
+    const { report: beforeOutage } = await api.getSupportReport({ homey });
     household.disconnect();
     cloud.down = true;
     await household.pollAfter(MINUTE);
@@ -100,6 +108,10 @@ test('simulated household acceptance', { timeout: 10_000 }, async (t) => {
     assert.equal((await getOverview({ homey })).reporting, 0);
     assert.equal((await getService({ homey })).replacement.checked, 0);
     assert.equal(triggers.length, 4);
+    const { report: duringOutage } = await api.getSupportReport({ homey });
+    assert.match(duringOutage, /Web API inventory — Last read failed\n  0\/6 paired devices with usable data/);
+    assert.match(duringOutage, /Environmental readings — 0\/2 paired devices with usable data/);
+    assert.deepEqual(duringOutage.match(/Last successful read .+/g), beforeOutage.match(/Last successful read .+/g));
 
     cloud.down = false;
     cloud.alerts.get(NORTH).push(alert('fire', 'during-outage', 'FIRE_ALARM'));
@@ -116,6 +128,9 @@ test('simulated household acceptance', { timeout: 10_000 }, async (t) => {
     assert.equal(value('air', TEMPERATURE), null);
     assert.equal(value('climate', TEMPERATURE), null);
     assert.equal(value('air', 'homelink_readings_sampled_at'), 'Unknown');
+    const { report } = await api.getSupportReport({ homey });
+    assert.ok(report.includes('Environmental readings — 0/2 paired devices with usable data\n  Last successful read ' +
+      new Date(Date.now()).toISOString()));
     assert.equal(triggers.length, 4);
   });
 
@@ -144,5 +159,8 @@ test('simulated household acceptance', { timeout: 10_000 }, async (t) => {
     await assert.rejects(api.checkConnection({ homey, body: { clientId: 'bad', clientSecret: 'synthetic' } }),
       { message: 'HomeLINK denied access. Check the Web API credentials and scope.' });
     assert.equal((await api.getConnectionStatus({ homey })).state, 'available');
+    const { report } = await api.getSupportReport({ homey });
+    assert.doesNotMatch(report, /synthetic|secret|serialNumber|location|password|topicRoot|[0-9a-f]{64}|Ei\d{4}/i);
+    assert.match(report, /MQTT listener — Listening\nAlarm Flow preview — Enabled/);
   });
 });

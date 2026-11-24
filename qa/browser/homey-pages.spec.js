@@ -11,6 +11,7 @@ const overview = {
 const service = {
   alarms: 3, replacement: { days: 30, checked: 2, due: 0 }, lastTest: { days: 14, checked: 0, due: 0 },
 };
+const exampleReport = 'Aico HomeLINK support report\nApp version 0.11.0\nWeb API inventory — Available';
 
 async function openHomeyPage(page, folder, fixture) {
   const routes = new Map([['/index.html', 'text/html']]);
@@ -50,6 +51,7 @@ async function openHomeyPage(page, folder, fixture) {
             callback(new Error('HomeLINK denied access. Check the Web API credentials and scope.'));
         }
         if (url === '/events') return callback(null, { state: state.saved.homelink_mqtt ? 'waiting' : 'disabled' });
+        if (url === '/diagnostics') return state.fail ? callback(new Error('Unexpected fixture error')) : callback(null, { report: response });
         return state.saved.homelink_web_api
           ? callback(null, { state: 'available', fetchedAt: Date.now(), summary })
           : callback(null, { state: 'unconfigured' });
@@ -121,6 +123,42 @@ test.describe('Settings', () => {
     await page.getByRole('button', { name: 'Remove MQTT credentials' }).click();
     await expect(page.locator('#mqtt-status')).toHaveText(/MQTT updates are disabled/);
     expect(await page.evaluate(() => window.qa.saved.homelink_web_api.clientId)).toBe('saved-fixture');
+  });
+
+  test('generates a redacted report, handles clipboard restrictions and clears old results on error', async ({ page }) => {
+    await page.addInitScript(() => {
+      Object.defineProperty(navigator, 'clipboard', {
+        value: { async writeText(text) {
+          if (window.qa.clipboardDenied) throw new Error('Clipboard blocked');
+          window.qa.copied = text;
+        } },
+      });
+    });
+    await openHomeyPage(page, 'settings', { kind: 'settings', response: exampleReport });
+    const generate = page.getByRole('button', { name: 'Generate report' });
+    const copy = page.getByRole('button', { name: 'Copy report' });
+    const report = page.getByRole('textbox', { name: 'Redacted support report' });
+    const status = page.locator('#support-status');
+    expect(await page.evaluate(() => window.qa.paths)).not.toContain('GET /diagnostics');
+    await expect(copy).toBeDisabled();
+    await generate.click();
+    await expect(report).toHaveValue(exampleReport);
+    await expect(report).toHaveAttribute('readonly', '');
+    await expectNarrowLayout(page, 320);
+    await copy.click();
+    await expect(status).toHaveText('Support report copied.');
+    expect(await page.evaluate(() => window.qa.copied)).toBe(exampleReport);
+
+    await page.evaluate(() => { window.qa.clipboardDenied = true; });
+    await copy.click();
+    await expect(status).toHaveText(/Report selected/);
+    expect(await report.evaluate((node) => node.value.slice(node.selectionStart, node.selectionEnd))).toBe(exampleReport);
+
+    await page.evaluate(() => { window.qa.fail = true; });
+    await generate.click();
+    await expect(status).toHaveText('Homey could not generate the support report.');
+    await expect(report).toBeHidden();
+    await expect(copy).toBeDisabled();
   });
 });
 

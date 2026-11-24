@@ -4,6 +4,8 @@ const Homey = require('homey');
 const { HomeLinkClient, readCredentials } = require('./lib/homelink-client');
 const { normalizeInventory, summarizeInventory } = require('./lib/inventory');
 const { HomeLinkMqtt, readMqttCredentials } = require('./lib/homelink-mqtt');
+const { createSupportReport } = require('./lib/support-report');
+const { version } = require('./app.json');
 
 const CREDENTIALS_KEY = 'homelink_web_api';
 const MQTT_KEY = 'homelink_mqtt';
@@ -18,6 +20,7 @@ class HomeLinkApp extends Homey.App {
   #checkClient;
   #checkRetryAt = 0;
   #inventoryStatus;
+  #lastRead = {};
   #devices = new Set();
   #sync;
   #repeat = false;
@@ -68,6 +71,7 @@ class HomeLinkApp extends Homey.App {
     this.#client?.close();
     this.#client = credentials ? new HomeLinkClient(credentials) : undefined;
     this.#inventoryStatus = undefined;
+    this.#lastRead = {};
     for (const device of this.#devices) device.invalidateObservations();
     this.#resetAlarmPreview();
     this.#configureMqtt();
@@ -115,6 +119,21 @@ class HomeLinkApp extends Homey.App {
     return { state: configured ? 'waiting' : 'disabled' };
   }
 
+  getSupportReport() {
+    const now = Date.now();
+    return {
+      report: createSupportReport({
+        version,
+        now,
+        inventoryState: this.getConnectionStatus(now).state,
+        mqttState: this.getEventStatus().state,
+        alarmPreview: this.#alarmPreviewSince !== null,
+        devices: Array.from(this.#devices, (device) => device.getDiagnosticStatus(now)),
+        lastRead: this.#lastRead,
+      }),
+    };
+  }
+
   async #readInventory(client, refresh) {
     const snapshot = await client.getInventory({ refresh });
     const devices = normalizeInventory(snapshot.rows);
@@ -142,13 +161,13 @@ class HomeLinkApp extends Homey.App {
     }
   }
 
-  getConnectionStatus() {
+  getConnectionStatus(now = Date.now()) {
     const status = this.#inventoryStatus;
     if (!this.#client) return { state: 'unconfigured' };
     if (!status) return { state: 'waiting' };
     if (status.state === 'unavailable') return status;
 
-    const age = Date.now() - status.fetchedAt;
+    const age = now - status.fetchedAt;
     if (age < 0 || age > 3 * POLL_MS) return { state: 'stale', fetchedAt: status.fetchedAt };
     return status;
   }
@@ -161,6 +180,7 @@ class HomeLinkApp extends Homey.App {
       const { devices, fetchedAt, summary } = await this.#readInventory(client, refresh);
       if (client !== this.#client || this.#stopped) throw new Error('HomeLINK credentials changed.');
       this.#inventoryStatus = { state: 'available', fetchedAt, summary };
+      this.#lastRead.inventory = fetchedAt;
       return { devices, fetchedAt };
     } catch (error) {
       if (client === this.#client && !this.#stopped) this.#inventoryStatus = { state: 'unavailable' };
@@ -195,13 +215,16 @@ class HomeLinkApp extends Homey.App {
     });
   }
 
-  async #readProperties(client, references, read) {
+  async #readProperties(client, references, feed, read) {
     const snapshots = new Map();
     for (let index = 0; index < references.length; index += MAX_CONCURRENT_PROPERTIES) {
       if (this.#stopped || client !== this.#client) break;
       const batch = references.slice(index, index + MAX_CONCURRENT_PROPERTIES);
       await Promise.allSettled(batch.map(async (reference) => {
-        snapshots.set(reference, await read(reference));
+        const snapshot = await read(reference);
+        if (this.#stopped || client !== this.#client) return;
+        snapshots.set(reference, snapshot);
+        this.#lastRead[feed] = Math.max(this.#lastRead[feed] ?? 0, snapshot.fetchedAt);
       }));
     }
     return snapshots;
@@ -223,12 +246,12 @@ class HomeLinkApp extends Homey.App {
       return { device, record: record?.model === model ? record : undefined };
     });
     const references = Array.from(new Set(devices.map(({ record }) => record?.propertyReference).filter(Boolean)));
-    const maintenance = await this.#readProperties(client, references,
+    const maintenance = await this.#readProperties(client, references, 'maintenance',
       (reference) => client.getPropertyMaintenance(reference, { refresh }));
     const environmentalProperties = Array.from(new Set(devices
       .filter(({ record }) => record?.hasReadings)
       .map(({ record }) => record.propertyReference).filter(Boolean)));
-    const readings = this.#readProperties(client, environmentalProperties,
+    const readings = this.#readProperties(client, environmentalProperties, 'environmental',
       (reference) => client.getPropertyReadings(reference));
     await Promise.allSettled(devices.map(async ({ device, record }) => {
       const current = () => !this.#stopped && client === this.#client && this.#devices.has(device);
