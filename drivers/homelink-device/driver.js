@@ -4,6 +4,18 @@ const Homey = require('homey');
 const { ALARM_KINDS } = require('../../lib/device-profiles');
 const { replacementDueWithin, lastTestAtLeast } = require('../../lib/service-dates');
 
+const MODEL_ICONS = new Map([
+  ['Ei1000G', '/icons/ei1000g.svg'],
+  ['Ei1020', '/icons/environment-sensor.svg'],
+  ['Ei1025', '/icons/environment-sensor.svg'],
+  ['Ei3014', '/icons/ei3014.svg'],
+  ['Ei3016', '/icons/ei3016.svg'],
+  ['Ei3018', '/icons/ei3018.svg'],
+  ['Ei3028', '/icons/ei3028.svg'],
+  ['Ei3030', '/icons/ei3030.svg'],
+  ['Ei450', '/icons/ei450.svg'],
+]);
+
 class HomeLinkDriver extends Homey.Driver {
   #maintenanceReported;
   #maintenanceCleared;
@@ -59,6 +71,7 @@ class HomeLinkDriver extends Homey.Driver {
     return Array.from(devices.values(), ({ id, model, name }) => ({
       name,
       data: { id, model },
+      icon: MODEL_ICONS.get(model) ?? '/icon.svg',
     }));
   }
 }

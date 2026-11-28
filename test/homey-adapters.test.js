@@ -2,11 +2,44 @@
 
 const assert = require('node:assert/strict');
 const { EventEmitter, once } = require('node:events');
+const { existsSync } = require('node:fs');
+const path = require('node:path');
 const { test } = require('node:test');
 const flowManifest = require('../drivers/homelink-device/driver.flow.compose.json');
 const { FakeHomeyObject, loadAdapter } = require('../qa/load-homey-adapter');
 const { HomeLinkMqtt, readMqttCredentials } = require('../lib/homelink-mqtt');
 const { deviceId } = require('../lib/identity');
+
+test('pairs HomeLINK hardware with the correct bundled icon and unchanged device data', async () => {
+  const expected = new Map([
+    ['Ei1000G', '/icons/ei1000g.svg'],
+    ['Ei1020', '/icons/environment-sensor.svg'],
+    ['Ei1025', '/icons/environment-sensor.svg'],
+    ['Ei3014', '/icons/ei3014.svg'],
+    ['Ei3016', '/icons/ei3016.svg'],
+    ['Ei3018', '/icons/ei3018.svg'],
+    ['Ei3028', '/icons/ei3028.svg'],
+    ['Ei3030', '/icons/ei3030.svg'],
+    ['Ei450', '/icons/ei450.svg'],
+    ['Unknown model', '/icon.svg'],
+  ]);
+  const devices = new Map(Array.from(expected.keys(), (model, index) => [
+    index, { id: 'test-' + index, model, name: model },
+  ]));
+  const Driver = loadAdapter('../drivers/homelink-device/driver', 'Driver', FakeHomeyObject);
+  const driver = new Driver({ app: { discover: async () => ({ devices }) } });
+
+  const pairs = await driver.onPairListDevices();
+  assert.deepEqual(pairs, Array.from(devices.values(), ({ id, model, name }) => ({
+    name,
+    data: { id, model },
+    icon: expected.get(model),
+  })));
+  const assets = path.resolve(__dirname, '../drivers/homelink-device/assets');
+  for (const { icon } of pairs) {
+    assert.ok(existsSync(path.join(assets, icon)), 'Missing pairing icon ' + icon);
+  }
+});
 
 test('adds Ei1025 measurements through normal pairing and clears them after a failed refresh', { timeout: 5000 }, async (t) => {
   const settings = new EventEmitter();
