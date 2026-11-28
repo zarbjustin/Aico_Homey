@@ -1,9 +1,10 @@
 {
   "type": "string",
   "title": {
-    "en": "Reported data collection"
+    "en": "Data collection"
   },
   "getable": true,
   "setable": false,
-  "uiComponent": "sensor"
+  "uiComponent": "sensor",
+  "icon": "/assets/capabilities/collection.svg"
 }

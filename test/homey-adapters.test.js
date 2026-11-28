@@ -44,7 +44,10 @@ test('pairs HomeLINK hardware with the correct bundled icon and unchanged device
 test('adds Ei1025 measurements through normal pairing and clears them after a failed refresh', { timeout: 5000 }, async (t) => {
   const settings = new EventEmitter();
   settings.get = (key) => key === 'homelink_web_api' ? { clientId: 'synthetic', clientSecret: 'synthetic' } : undefined;
-  const homey = { settings, setInterval: t.mock.fn(), clearInterval: t.mock.fn() };
+  const homey = {
+    settings, setInterval: t.mock.fn(), clearInterval: t.mock.fn(),
+    clock: { getTimezone: () => 'Europe/London' },
+  };
   const property = 'SYNTHETIC-ENV-HOME';
   const serial = 'SYNTHETIC-ENV-SENSOR';
   const propertyLink = 'property/' + property;
@@ -98,6 +101,8 @@ test('adds Ei1025 measurements through normal pairing and clears them after a fa
   device.setAvailable = async () => { available = true; updates.emit('available'); };
   device.hasCapability = () => false;
   device.addCapability = t.mock.fn(async () => {});
+  device.getCapabilityOptions = () => ({});
+  device.setCapabilityOptions = t.mock.fn(async () => {});
   device.getCapabilityValue = (id) => metrics.get(id);
   device.setCapabilityValue = async (id, value) => { metrics.set(id, value); updates.emit(id, value); };
 
@@ -109,16 +114,18 @@ test('adds Ei1025 measurements through normal pairing and clears them after a fa
   assert.equal(metrics.get('measure_humidity'), 57);
   assert.equal(metrics.get('measure_co2'), 810);
   assert.equal(metrics.get('homelink_readings_sampled_at'), '2026-11-24T12:00:00.000Z');
+  assert.equal(metrics.get('homelink_readings_sampled_at_display'), '24 Nov 12:00');
   const ids = device.addCapability.mock.calls.map((call) => call.arguments[0]);
   assert.ok(ids.includes('measure_co2'));
   assert.equal(ids.includes('alarm_co'), false);
 
   failReadings = true;
   now += 300_000;
-  const cleared = once(updates, 'homelink_readings_sampled_at');
+  const cleared = once(updates, 'homelink_readings_sampled_at_display');
   const [poll] = homey.setInterval.mock.calls[0].arguments;
   poll();
   assert.deepEqual(await cleared, ['Unknown']);
+  assert.equal(metrics.get('homelink_readings_sampled_at'), 'Unknown');
   assert.equal(metrics.get('measure_co2'), null);
   assert.equal(metrics.get('homelink_operational_status'), 'Good');
   assert.equal(available, true);
@@ -325,6 +332,8 @@ test('pairs, migrates, dispatches gated Flow cards, and recovers without replayi
   const existingCapabilities = new Set(['homelink_maintenance_alerts']);
   device.hasCapability = (id) => existingCapabilities.has(id);
   device.addCapability = t.mock.fn(async (id) => { existingCapabilities.add(id); });
+  device.getCapabilityOptions = () => ({});
+  device.setCapabilityOptions = t.mock.fn(async () => {});
   device.getData = () => pair.data;
   device.getAvailable = () => available;
   device.getCapabilityValue = (id) => capabilities.get(id);
@@ -341,10 +350,25 @@ test('pairs, migrates, dispatches gated Flow cards, and recovers without replayi
   await updated;
   assert.equal(capabilities.get('homelink_operational_status'), 'Good');
   assert.equal(capabilities.get('homelink_last_seen'), 'Unknown');
+  assert.equal(capabilities.get('homelink_last_seen_display'), 'Unknown');
   assert.match(capabilities.get('homelink_retrieved_at'), /Z$/);
+  assert.equal(capabilities.get('homelink_retrieved_at_display'), '1 Jan 01:00');
+  assert.equal(capabilities.get('homelink_last_tested'), '1969-12-31');
+  assert.equal(capabilities.get('homelink_last_tested_display'), '31 Dec 1969');
+  assert.equal(capabilities.get('homelink_replace_by'), '1970-01-03T00:00:00Z');
+  assert.equal(capabilities.get('homelink_replace_by_display'), '3 Jan 1970');
   assert.equal(capabilities.get('homelink_maintenance_alerts'), '1 active');
-  assert.equal(device.addCapability.mock.callCount(), 1);
-  assert.equal(device.addCapability.mock.calls[0].arguments[0], 'homelink_maintenance_retrieved_at');
+  assert.deepEqual(device.addCapability.mock.calls.map(call => call.arguments[0]), [
+    'homelink_maintenance_retrieved_at',
+    'homelink_last_seen_display',
+    'homelink_last_tested_display',
+    'homelink_replace_by_display',
+    'homelink_retrieved_at_display',
+    'homelink_maintenance_retrieved_at_display',
+  ]);
+  assert.ok(device.setCapabilityOptions.mock.calls.every(({ arguments: [id, options] }) =>
+    id.endsWith('_display') && options.preventTag && options.preventInsights));
+  assert.equal(device.setCapabilityOptions.mock.callCount(), 5);
   assert.equal(globalThis.fetch.mock.callCount(), 3);
   const active = conditionListeners.get('homelink_maintenance_active');
   const dataAvailable = conditionListeners.get('homelink_maintenance_data_available');
@@ -378,23 +402,25 @@ test('pairs, migrates, dispatches gated Flow cards, and recovers without replayi
   });
   assert.equal(await active({ device }), false);
 
-  const missingAlerts = once(events, 'homelink_maintenance_retrieved_at');
+  const missingAlerts = once(events, 'homelink_maintenance_retrieved_at_display');
   now += 300_000;
   alertsAvailable = false;
   poll();
   assert.equal((await missingAlerts)[0], 'Unknown');
+  assert.equal(capabilities.get('homelink_maintenance_retrieved_at'), 'Unknown');
   assert.equal(capabilities.get('homelink_maintenance_alerts'), 'Unknown');
   assert.equal(capabilities.get('homelink_operational_status'), 'Good');
   assert.equal(available, true);
   assert.equal(await dataAvailable({ device }), false);
   await assert.rejects(active({ device }), /maintenance data is unavailable/);
 
-  const recovered = once(events, 'homelink_maintenance_retrieved_at');
+  const recovered = once(events, 'homelink_maintenance_retrieved_at_display');
   now += 60_000;
   alertsAvailable = true;
   alertIds = ['first-after-gap'];
   poll();
-  assert.equal((await recovered)[0], new Date(now).toISOString());
+  await recovered;
+  assert.equal(capabilities.get('homelink_maintenance_retrieved_at'), new Date(now).toISOString());
   assert.equal(await active({ device }), true);
   assert.equal(triggers.length, 2);
 
@@ -402,7 +428,7 @@ test('pairs, migrates, dispatches gated Flow cards, and recovers without replayi
   preview = true;
   settings.emit('set', 'homelink_alarm_flow_preview');
   assert.equal(app.alarmPreviewSince, now);
-  const seeded = once(events, 'homelink_maintenance_retrieved_at');
+  const seeded = once(events, 'homelink_maintenance_retrieved_at_display');
   now += 300_000;
   poll();
   await seeded;
@@ -421,12 +447,12 @@ test('pairs, migrates, dispatches gated Flow cards, and recovers without replayi
   assert.deepEqual((await fire)[0], { device, tokens: { new_count: 1, observed_at: new Date(now).toISOString() } });
   assert.deepEqual(triggers.slice(2).map(({ id }) => id), ['homelink_co_reported', 'homelink_fire_reported', 'homelink_co_reported']);
 
-  const invalid = once(events, 'homelink_maintenance_retrieved_at');
+  const invalid = once(events, 'homelink_maintenance_retrieved_at_display');
   now += 300_000;
   alarms = [['invalid', 'CO_ALARM', 'FIRE_ALARM']];
   poll();
   await invalid;
-  const afterInvalid = once(events, 'homelink_maintenance_retrieved_at');
+  const afterInvalid = once(events, 'homelink_maintenance_retrieved_at_display');
   now += 300_000;
   alarms = [['after-invalid', 'FIRE_ALARM']];
   poll();
@@ -436,7 +462,7 @@ test('pairs, migrates, dispatches gated Flow cards, and recovers without replayi
   preview = false;
   settings.emit('unset', 'homelink_alarm_flow_preview');
   assert.equal(app.alarmPreviewSince, null);
-  const afterDisable = once(events, 'homelink_maintenance_retrieved_at');
+  const afterDisable = once(events, 'homelink_maintenance_retrieved_at_display');
   now += 300_000;
   alarms = [['disabled', 'FIRE_ALARM'], ['disabled-co', 'CO_ALARM']];
   poll();

@@ -1,0 +1,10 @@
+{
+  "type": "string",
+  "title": {
+    "en": "Alerts fetched"
+  },
+  "getable": true,
+  "setable": false,
+  "uiComponent": "sensor",
+  "icon": "/assets/capabilities/alerts.svg"
+}

@@ -44,6 +44,12 @@ Homey displays the newest plausible sample of each expected unit for the linked 
 
 During first-home acceptance, compare values, units and measurement timestamps with the dashboard. Verify native Homey device indicators, Flow cards and Insights on the hub. Fault and risk metrics need their own data evidence.
 
+## Device detail dates
+
+The detail screen shows current-year timestamps in Homey's time zone. Dates from other years include the year. HomeLINK date-only values and replacement dates keep their original calendar day. **Last seen** comes from HomeLINK's device metadata. **Inventory fetched** and **Alerts fetched** show when Homey read the cloud data. **Readings sampled** is the oldest sample among the displayed environmental measurements.
+
+Existing date capability IDs still hold the original values, including full UTC timestamps when reported. The app adds separate display capabilities to existing pairings and prevents them from generating additional Flow tags or Insights series.
+
 ## Maintenance alerts
 
 The app reads `GET /v1/property/{reference}/alerts` for properties linked to paired inventory devices. The [reference integration’s alert fixture](https://github.com/RogerSelwyn/AICO_HomeLINK/blob/09ec979ef11c6a9b2950b7439846575dd7c85fbb/tests/data/base/alerts_alarm.json) and [event category catalogue](https://github.com/RogerSelwyn/python_homelink/blob/c6db59b8dca7f07d67baba08433e198da1456585/tests/data/lookups_eventtype.json) provide the initial contract. A single account session shares token renewal and each property reuses a successful snapshot for five minutes. Event identifiers are kept in memory to compare consecutive snapshots. Only aggregate counts and retrieval times enter Homey capabilities and Flow tokens.

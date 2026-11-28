@@ -16,8 +16,20 @@
     "homelink_replace_by",
     "homelink_retrieved_at",
     "homelink_maintenance_alerts",
-    "homelink_maintenance_retrieved_at"
+    "homelink_maintenance_retrieved_at",
+    "homelink_last_seen_display",
+    "homelink_last_tested_display",
+    "homelink_replace_by_display",
+    "homelink_retrieved_at_display",
+    "homelink_maintenance_retrieved_at_display"
   ],
+  "capabilitiesOptions": {
+    "homelink_last_seen_display": { "preventTag": true, "preventInsights": true },
+    "homelink_last_tested_display": { "preventTag": true, "preventInsights": true },
+    "homelink_replace_by_display": { "preventTag": true, "preventInsights": true },
+    "homelink_retrieved_at_display": { "preventTag": true, "preventInsights": true },
+    "homelink_maintenance_retrieved_at_display": { "preventTag": true, "preventInsights": true }
+  },
   "pair": [
     { "id": "list_devices", "template": "list_devices", "navigation": { "next": "add_devices" } },
     { "id": "add_devices", "template": "add_devices" }

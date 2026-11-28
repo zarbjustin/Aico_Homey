@@ -4,7 +4,7 @@ An independent Homey Pro SDK 3 app that reads device inventory and maintenance i
 
 **v0.13 is a development build.** The code can discover and pair an Ei1000G, Ei1020, Ei1025, Ei3014, Ei3016, Ei3018, Ei3028, Ei3030 or Ei450 when the model appears in the supported HomeLINK inventory. See [compatibility](docs/compatibility.md) for model type requirements. Each tile can show the reported operational and collection statuses, last seen, last tested and replacement dates, and when Homey retrieved the record. Missing or unrecognised fields show **Unknown**. A failed inventory refresh marks paired devices unavailable. Cloud snapshot retrieval and last device contact are separate timestamps.
 
-Device tiles also show the count of active faults and maintenance alerts reported by HomeLINK. An incomplete, ambiguous or unavailable alert feed shows **Unknown** for maintenance while the app can still display inventory information. The maintenance retrieval timestamp is shown separately.
+Open a device for its health, data collection, service dates and HomeLINK refresh times. The detail screen uses short dates and shows recent times in Homey's time zone. **Replace by** is a calendar date. The count of active faults and maintenance alerts is shown alongside the time Homey fetched the alerts. An incomplete, ambiguous or unavailable alert feed shows **Unknown** for maintenance while the app can still display inventory information.
 
 In app settings, generate a [redacted support report](docs/development.md#support-report) to see recent read times, device coverage and MQTT status.
 The connection view shows detected models and their icons. For reported model types, connectivity codes and field coverage, open **Advanced settings and support → Saved key model details**.

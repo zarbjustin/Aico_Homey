@@ -1,9 +1,10 @@
 {
   "type": "string",
   "title": {
-    "en": "Reported faults and maintenance"
+    "en": "Faults & maintenance"
   },
   "getable": true,
   "setable": false,
-  "uiComponent": "sensor"
+  "uiComponent": "sensor",
+  "icon": "/assets/capabilities/maintenance.svg"
 }
