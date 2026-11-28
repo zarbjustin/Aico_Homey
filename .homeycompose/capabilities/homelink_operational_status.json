@@ -1,9 +1,10 @@
 {
   "type": "string",
   "title": {
-    "en": "Reported operational status"
+    "en": "Device health"
   },
   "getable": true,
   "setable": false,
-  "uiComponent": "sensor"
+  "uiComponent": "sensor",
+  "icon": "/assets/capabilities/health.svg"
 }

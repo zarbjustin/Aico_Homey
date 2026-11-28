@@ -164,6 +164,9 @@ function createHousehold(t) {
       device.setUnavailable = async () => { available = false; };
       device.hasCapability = (key) => values.has(key);
       device.addCapability = async (key) => { values.set(key, null); };
+      const options = new Map();
+      device.getCapabilityOptions = (key) => options.get(key);
+      device.setCapabilityOptions = async (key, option) => { options.set(key, option); };
       device.getCapabilityValue = (key) => values.get(key);
       device.setCapabilityValue = async (key, value) => { values.set(key, value); };
       device.error = (message) => { assert.fail(message); };

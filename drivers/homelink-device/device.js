@@ -2,6 +2,7 @@
 
 const Homey = require('homey');
 const { AlertState, isFreshAlertSnapshot } = require('../../lib/alert-state');
+const { INVENTORY_DATES, displayCapability, createDeviceDateFormatter } = require('../../lib/device-detail-dates');
 const { ALARM_KINDS, profileFor } = require('../../lib/device-profiles');
 const { READING_TIMESTAMP, readingCapabilities } = require('../../lib/environmental-readings');
 
@@ -13,6 +14,7 @@ class HomeLinkDevice extends Homey.Device {
   #alarmStates = new Map(ALARM_KINDS.map((kind) => [kind, new AlertState()]));
   #inventory = null;
   #readings;
+  #displayDates = INVENTORY_DATES;
 
   async onInit() {
     await this.setUnavailable('Waiting for HomeLINK data.');
@@ -23,6 +25,15 @@ class HomeLinkDevice extends Homey.Device {
     if (environmental?.length) {
       for (const id of [...environmental, READING_TIMESTAMP]) {
         if (!this.hasCapability(id)) await this.addCapability(id);
+      }
+      this.#displayDates = [...INVENTORY_DATES, READING_TIMESTAMP];
+    }
+    for (const source of this.#displayDates) {
+      const id = displayCapability(source);
+      if (!this.hasCapability(id)) await this.addCapability(id);
+      const options = this.getCapabilityOptions(id) ?? {};
+      if (!options.preventTag || !options.preventInsights) {
+        await this.setCapabilityOptions(id, { ...options, preventTag: true, preventInsights: true });
       }
     }
     this.homey.app.addDevice(this);
@@ -107,6 +118,10 @@ class HomeLinkDevice extends Homey.Device {
     };
     const environmental = profileFor(record.model)?.environmental;
     if (environmental?.length) Object.assign(values, readingCapabilities(samples, environmental));
+    const formatDate = createDeviceDateFormatter(fetchedAt, this.homey.clock.getTimezone());
+    for (const id of this.#displayDates) {
+      values[displayCapability(id)] = formatDate(values[id], { dateOnly: id === 'homelink_replace_by' });
+    }
     for (const [key, value] of Object.entries(values)) {
       if (!current()) return;
       if (this.getCapabilityValue(key) !== value) await this.setCapabilityValue(key, value);
