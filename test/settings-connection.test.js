@@ -11,6 +11,8 @@ test('settings tests and saves exact credentials, and leaves a saved key alone o
   const nodes = new Map(ids.map((id) => [id, {
     events: {},
     evidence: {},
+    focus() {},
+    replaceChildren() {},
     querySelector() { return this.evidence; },
     addEventListener(name, call) { this.events[name] = call; },
     reset() {
@@ -19,7 +21,7 @@ test('settings tests and saves exact credentials, and leaves a saved key alone o
       for (const field of fields) nodes.get(prefix + field).value = '';
     },
   }]));
-  const context = { document: { getElementById: (id) => nodes.get(id) } };
+  const context = { document: { getElementById: (id) => nodes.get(id) }, setTimeout() {} };
   vm.runInNewContext(html.match(/<script>([\s\S]*?)<\/script>/)[1], context);
   let rejectCheck = true;
   const writes = [];

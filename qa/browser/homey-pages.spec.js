@@ -2,6 +2,7 @@
 
 const path = require('node:path');
 const { test, expect } = require('@playwright/test');
+const { getModelArtwork } = require('../../lib/device-icons');
 
 const origin = 'http://homey-qa.invalid';
 const app = path.resolve(__dirname, '../..');
@@ -11,7 +12,7 @@ const overview = {
 const service = {
   alarms: 3, replacement: { days: 30, checked: 2, due: 0 }, lastTest: { days: 14, checked: 0, due: 0 },
 };
-const exampleReport = 'Aico HomeLINK support report\nApp version 0.13.0\nWeb API inventory — Available';
+const exampleReport = 'Aico HomeLINK support report\nApp version 0.13.1\nWeb API inventory — Available';
 
 async function openHomeyPage(page, folder, fixture) {
   const routes = new Map([['/index.html', 'text/html']]);
@@ -27,16 +28,18 @@ async function openHomeyPage(page, folder, fixture) {
     if (!contentType) return route.abort();
     return route.fulfill({ path: path.join(app, folder, target.pathname.slice(1)), contentType });
   });
-  await page.addInitScript(({ kind, response }) => {
+  await page.addInitScript(({ kind, response, unconfigured, modelArtwork }) => {
     const state = {
       response, fail: false, paths: [], reads: [],
       saved: { homelink_web_api: { clientId: 'saved-fixture', clientSecret: 'fixture-secret' } },
     };
+    if (unconfigured) delete state.saved.homelink_web_api;
     window.qa = state;
     const summary = {
-      records: 3, pairable: 1, linkedProperties: 1, unknown: 1, missingModel: 0,
+      records: 4, pairable: 2, linkedProperties: 1, unknown: 1, missingModel: 0,
       models: [
         { model: 'Ei208WRF', count: 1, pairable: false, pairableCount: 0 },
+        { model: 'Ei1000G', count: 1, pairable: true, pairableCount: 1 },
         { model: 'Ei450', count: 1, pairable: true, pairableCount: 1 },
       ],
       modelEvidence: [
@@ -65,14 +68,15 @@ async function openHomeyPage(page, folder, fixture) {
         }
         if (url === '/events') return callback(null, { state: state.saved.homelink_mqtt ? 'waiting' : 'disabled' });
         if (url === '/diagnostics') return state.fail ? callback(new Error('Unexpected fixture error')) : callback(null, { report: response });
+        if (state.fail) return callback(new Error('App Not Available'));
         if (state.inventoryState) return callback(null, { state: state.inventoryState });
         return state.saved.homelink_web_api
-          ? callback(null, { state: 'available', fetchedAt: Date.now(), summary })
+          ? callback(null, { state: 'available', fetchedAt: Date.now(), summary, modelArtwork })
           : callback(null, { state: 'unconfigured' });
       },
     };
     window.addEventListener('DOMContentLoaded', () => window.onHomeyReady(homey), { once: true });
-  }, fixture);
+  }, { ...fixture, modelArtwork: getModelArtwork([{ model: 'Ei1000G' }, { model: 'Ei450' }]) });
   await page.goto(origin + '/index.html');
 }
 
@@ -90,16 +94,43 @@ async function expectNarrowLayout(page, width, height) {
 test.describe('Settings', () => {
   test.use({ viewport: { width: 320, height: 640 }, isMobile: true, hasTouch: true });
 
+  test('opens first-time setup, connects in one step and shows distinct detected models', async ({ page }) => {
+    await openHomeyPage(page, 'settings', { kind: 'settings', unconfigured: true });
+    const client = page.getByLabel('Client ID', { exact: true });
+    const secret = page.getByLabel('Client secret', { exact: true });
+    await expect(client).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Test connection' })).toBeHidden();
+    await expect(page.getByRole('button', { name: 'Save MQTT credentials' })).toBeHidden();
+    await client.fill('verified-fixture');
+    await secret.fill('candidate-fixture-secret');
+    await page.getByRole('button', { name: 'Connect HomeLINK' }).click();
+    await expect(page.locator('#connection-state')).toHaveText('Connected to HomeLINK');
+    await expect(client).toBeHidden();
+    await expect(secret).toHaveValue('');
+    const models = page.getByRole('list', { name: 'Models detected by HomeLINK' });
+    await expect(models.getByText('Ei1000G × 1')).toBeVisible();
+    await expect(models.getByText('Ei450 × 1')).toBeVisible();
+    const icons = await models.locator('.device-icon').evaluateAll(elements => elements.map(el => getComputedStyle(el).maskImage));
+    expect(icons).toHaveLength(2);
+    expect(icons.every(icon => icon.startsWith('url("data:image/svg+xml;base64,'))).toBe(true);
+    expect(new Set(icons).size).toBe(2);
+    await expectNarrowLayout(page, 320);
+  });
+
   test('checks access at a narrow viewport and preserves previous credentials on a rejected key', async ({ page }) => {
     await openHomeyPage(page, 'settings', { kind: 'settings' });
     await expectNarrowLayout(page, 320);
     const client = page.getByLabel('Client ID', { exact: true });
     const secret = page.getByLabel('Client secret', { exact: true });
-    const save = page.getByRole('button', { name: 'Verify and save credentials' });
+    const save = page.getByRole('button', { name: 'Verify and replace key' });
+    await expect(client).toBeHidden();
+    await page.getByText('Manage access key', { exact: true }).click();
     await expect(secret).toHaveAttribute('type', 'password');
     await expect(client).toHaveValue('');
     await expect(secret).toHaveValue('');
-    await expect(page.getByRole('checkbox')).not.toBeChecked();
+    const alarmPreview = page.locator('#alarm-preview');
+    await expect(alarmPreview).toBeHidden();
+    await expect(alarmPreview).not.toBeChecked();
     await client.fill('invalid-fixture');
     await secret.fill('candidate-fixture-secret');
     await save.click();
@@ -107,10 +138,11 @@ test.describe('Settings', () => {
     expect(await page.evaluate(() => window.qa.saved.homelink_web_api.clientId)).toBe('saved-fixture');
 
     await client.fill('verified-fixture');
+    await page.getByText('More key options', { exact: true }).click();
     await page.getByRole('button', { name: 'Test connection' }).click();
     await expect(page.locator('#status')).toHaveText(/Connection verified/);
     expect(await page.evaluate(() => window.qa.saved.homelink_web_api.clientId)).toBe('saved-fixture');
-    await expect(page.locator('#tested-inventory')).toHaveText(/1 eligible for pairing/);
+    await expect(page.locator('#tested-inventory')).toHaveText(/2 eligible for pairing/);
     await save.click();
     await expect(page.locator('#status')).toHaveText(/Verified key saved/);
     await expect(secret).toHaveValue('');
@@ -120,6 +152,8 @@ test.describe('Settings', () => {
 
   test('validates and removes the MQTT key independently', async ({ page }) => {
     await openHomeyPage(page, 'settings', { kind: 'settings' });
+    await page.getByText('Advanced settings and support', { exact: true }).click();
+    await page.getByText('MQTT event updates', { exact: true }).click();
     await page.getByLabel('MQTT client ID').fill('fixture');
     await page.getByLabel('MQTT username').fill('fixture-user');
     await page.getByLabel('MQTT password').fill('fixture-broker-secret');
@@ -144,10 +178,13 @@ test.describe('Settings', () => {
     const tested = page.locator('#tested-model-details');
     const saved = page.locator('#saved-model-details');
     await expect(tested).toBeHidden();
+    await page.getByText('Advanced settings and support', { exact: true }).click();
     await saved.locator('summary').click();
     await expect(saved.locator('.model-evidence')).toContainText('Ei450 · Type EIACCESSORY · Connectivity EIRF868');
     await expect(saved.locator('.model-evidence')).toContainText('Ei208WRF · Type Other (masked) · Connectivity Missing');
     const client = page.getByLabel('Client ID', { exact: true });
+    await page.getByText('Manage access key', { exact: true }).click();
+    await page.getByText('More key options', { exact: true }).click();
     await client.fill('verified-fixture');
     await page.getByLabel('Client secret', { exact: true }).fill('candidate-fixture-secret');
     const check = page.getByRole('button', { name: 'Test connection' });
@@ -163,10 +200,14 @@ test.describe('Settings', () => {
     await expect(saved).toBeVisible();
 
     await page.evaluate(() => { window.qa.inventoryState = 'incomplete'; });
-    await page.getByRole('button', { name: 'Refresh saved status' }).click();
+    await page.getByRole('button', { name: 'Refresh status' }).click();
     await expect(page.locator('#connection-state')).toHaveText(/HomeLINK returned an incomplete device list/);
     await expect(saved).toBeHidden();
     await expect(saved.locator('.model-evidence')).toHaveText('');
+    await expect(page.locator('#detected-models')).toBeHidden();
+    await page.evaluate(() => { window.qa.fail = true; });
+    await page.getByRole('button', { name: 'Refresh status' }).click();
+    await expect(page.locator('#connection-state')).toHaveText('Homey could not check the connection. Try refreshing.');
   });
 
   test('generates a redacted report, handles clipboard restrictions and clears old results on error', async ({ page }) => {
@@ -179,6 +220,8 @@ test.describe('Settings', () => {
       });
     });
     await openHomeyPage(page, 'settings', { kind: 'settings', response: exampleReport });
+    await page.getByText('Advanced settings and support', { exact: true }).click();
+    await page.getByText('Support report', { exact: true }).click();
     const generate = page.getByRole('button', { name: 'Generate report' });
     const copy = page.getByRole('button', { name: 'Copy report' });
     const report = page.getByRole('textbox', { name: 'Redacted support report' });

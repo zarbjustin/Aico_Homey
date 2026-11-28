@@ -177,6 +177,9 @@ test('simulated household acceptance', { timeout: 10_000 }, async (t) => {
     assert.equal(status.state, 'available');
     assert.equal(status.summary.linkedProperties, 2);
     assert.equal(status.summary.pairable, 6);
+    const gatewayIcon = Buffer.from(status.modelArtwork.Ei1000G, 'base64').toString('utf8');
+    assert.match(gatewayIcon, /^<svg /);
+    assert.notEqual(status.modelArtwork.Ei1000G, status.modelArtwork.Ei3030);
     assert.doesNotMatch(JSON.stringify(status), /synthetic|secret|serialNumber|location|password|topicRoot/i);
     await assert.rejects(api.checkConnection({ homey, body: { clientId: 'bad', clientSecret: 'synthetic' } }),
       { message: 'HomeLINK denied access. Check the Web API credentials and scope.' });

@@ -7,7 +7,7 @@ An independent Homey Pro SDK 3 app that reads device inventory and maintenance i
 Device tiles also show the count of active faults and maintenance alerts reported by HomeLINK. An incomplete, ambiguous or unavailable alert feed shows **Unknown** for maintenance while the app can still display inventory information. The maintenance retrieval timestamp is shown separately.
 
 In app settings, generate a [redacted support report](docs/development.md#support-report) to see recent read times, device coverage and MQTT status.
-Expand **Tested key model details** or **Saved key model details** for the reported model types, connectivity codes and per-model field coverage.
+The connection view shows detected models and their icons. For reported model types, connectivity codes and field coverage, open **Advanced settings and support → Saved key model details**.
 
 Use the device's [maintenance Flow cards](docs/flows.md) in Flow or Advanced Flow for new reports, when reports clear and to check whether maintenance data is available. Add replacement and last-test conditions to a scheduled Flow for service reminders.
 
@@ -38,9 +38,11 @@ Run `npm run test:acceptance` for the simulated household. The [offline acceptan
 ## First live verification
 
 1. Confirm that the gateway and enrolled devices appear in the HomeLINK Dashboard. Confirm that the account can create an access key with Web API type and Standard scope. Use a key limited to devices whose data this Homey is authorised to display.
-2. After installing the development build on an authorised Homey Pro, enter the key in app settings. Use **Test connection** to check access and **Verify and save credentials** to activate it. The settings page also shows the saved connection and a redacted inventory summary.
+2. In the app settings on an authorised Homey Pro, enter the client ID and secret and choose **Connect HomeLINK**. Homey verifies the key before saving it. To test a key before saving, open **More key options → Test connection**.
 3. In Homey, add an **Aico HomeLINK → HomeLINK device**. Compare the displayed models, dates and maintenance alerts with the portal. This first version supports single-page inventories.
 4. Use the procedure in [the development notes](docs/development.md) to record the results and outstanding gaps.
+
+Homey assigns model-specific tile icons when devices are added. Devices originally added with the shared driver icon retain that icon assignment. The app's connection view shows the model artwork for both existing and new setups.
 
 For supported fields and models, see [compatibility](docs/compatibility.md). The [roadmap](docs/roadmap.md) tracks development and live verification separately.
 

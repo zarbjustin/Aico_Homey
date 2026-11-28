@@ -9,7 +9,7 @@
 
 - [ ] Confirm access to the HomeLINK Dashboard and a Standard-scope Web API key. Verify that the gateway and expected devices appear in the intended property in the dashboard.
 - [ ] Agree the Homey Pro and install window. Install the checked development build and record the Homey model and firmware, app version and installation result.
-- [ ] Open settings and select **Test connection** for the Web API key. Review the aggregate inventory diagnostics.
+- [ ] Open settings and use **More key options → Test connection** for the Web API key. Review the aggregate inventory diagnostics.
 - [ ] Expand **Tested key model details**. Check the Ei450 type, connectivity and service-field coverage. Look for the Ei208WRF if enrolled and record its available fields. Check the gateway association in the portal. If Homey masks an unfamiliar API code, record that separately for the authorised local protocol review.
 - [ ] Save the verified key. Keep the key and account-specific evidence in private storage.
 - [ ] Compare Homey’s pairing list with the HomeLINK Dashboard. Record each product model, API type, gateway association and the fields available for comparison. Check that repeated discovery preserves identities and reports missing fields as unknown.
