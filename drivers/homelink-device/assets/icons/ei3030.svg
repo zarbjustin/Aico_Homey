@@ -1,10 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 960">
-  <g transform="scale(20)" fill="none" stroke="#000" stroke-width="2.15" stroke-linecap="round" stroke-linejoin="round">
-    <ellipse cx="22.5" cy="20.5" rx="18.5" ry="15.5"/>
-    <path d="M41 20.5v7.2C41 36.3 32.7 43 22.5 43S4 36.3 4 27.7v-7.2"/>
-    <path d="M5.2 31.5c3 6.5 9.5 9.8 17.3 9.8s14.3-3.3 17.3-9.8"/>
-    <circle cx="22.5" cy="20" r="5"/>
-    <path d="M12.5 14h.1m3 0h.1m3 0h.1m10.4-.2h3m-2.3 2.9h2.3" stroke-width="1.65"/>
-    <path d="M20 29.5h.05m2.5-2h.05m2.5 2h.05m5.5 5.5v3m3.4-4.5v3m3.4-5.1v2.9" stroke-width="1.65"/>
+  <g transform="scale(20)" fill="none" stroke="#000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <ellipse cx="23" cy="21" rx="19.5" ry="16.5"/>
+    <path d="M42.5 21v5.8c0 9.4-8.7 17.2-19.5 17.2S3.5 36.2 3.5 26.8V21"/>
+    <ellipse cx="23" cy="21" rx="16.5" ry="13.7" stroke-width="1.1"/>
+    <circle cx="23" cy="21" r="6"/>
+    <path d="M10.5 21h.1m2.6 0h.1m2.6 0h.1m15.6-2.2a7 7 0 0 1 0 4.4m3-5.3a10 10 0 0 1 0 6.2m-12.8 5.7h.1m2.4 0h.1m-1.4 2h.1" stroke-width="1.5"/>
   </g>
 </svg>
