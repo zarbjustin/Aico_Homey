@@ -128,7 +128,9 @@ test.describe('Settings', () => {
     await expect(secret).toHaveAttribute('type', 'password');
     await expect(client).toHaveValue('');
     await expect(secret).toHaveValue('');
-    await expect(page.getByRole('checkbox')).not.toBeChecked();
+    const alarmPreview = page.locator('#alarm-preview');
+    await expect(alarmPreview).toBeHidden();
+    await expect(alarmPreview).not.toBeChecked();
     await client.fill('invalid-fixture');
     await secret.fill('candidate-fixture-secret');
     await save.click();
